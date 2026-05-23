@@ -1,0 +1,25 @@
+# Copy this into your repo as .github/workflows/specfly.yml
+#
+# This is the entire footprint Specfly asks of an adopter: this file plus an
+# ANTHROPIC_API_KEY secret and the installed Specfly App. The trigger is
+# repository_dispatch fired BY the Specfly backend (never locally) — that routing
+# is what keeps every run going through Specfly.
+
+name: Specfly Apply
+
+on:
+  repository_dispatch:
+    types: [specfly-apply]
+
+permissions:
+  contents: write # push the change branch; the main ruleset fences off main
+
+jobs:
+  apply:
+    uses: foster-systems/specfly/.github/workflows/apply.yml@v1
+    with:
+      change: ${{ github.event.client_payload.change }}
+      model: ${{ github.event.client_payload.model || 'sonnet' }}
+      effort: ${{ github.event.client_payload.effort || 'high' }}
+    secrets:
+      anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

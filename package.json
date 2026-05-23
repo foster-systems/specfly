@@ -1,0 +1,21 @@
+{
+  "name": "specfly",
+  "version": "0.0.2",
+  "description": "Push an OpenSpec change, get a reviewable PR from a GitHub-hosted Claude Code run.",
+  "keywords": [
+    "openspec",
+    "claude-code",
+    "github-actions",
+    "spec-driven-development",
+    "automation"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/foster-systems/specfly#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/foster-systems/specfly.git"
+  },
+  "bugs": {
+    "url": "https://github.com/foster-systems/specfly/issues"
+  }
+}

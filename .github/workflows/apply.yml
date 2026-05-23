@@ -1,0 +1,185 @@
+# Specfly — reusable apply workflow (workflow_call)
+#
+# STATUS: early scaffold. Architecture is settled (see DESIGN.md); the exact
+# Claude Code invocation, the backend dispatch/PR handshake, and verify reporting
+# are still being wired.
+#
+# Adopters don't edit this — they reference it from a thin caller workflow
+# triggered by repository_dispatch from the Specfly backend. See
+# examples/adopter-workflow.yml.
+#
+# Division of labour: the runner CODES and PUSHES the change branch (using the
+# job's built-in GITHUB_TOKEN, contents:write). The Specfly App/backend opens the
+# PR as Specfly[bot] — a separate actor, so you can approve it and CI triggers.
+
+name: Specfly Apply
+
+on:
+  workflow_call:
+    inputs:
+      change:
+        description: "OpenSpec change name to apply (defaults to the change/<name> branch)."
+        required: false
+        type: string
+      model:
+        description: "Claude model (e.g. sonnet, opus)."
+        required: false
+        default: sonnet
+        type: string
+      effort:
+        description: "Thinking effort: low | medium | high."
+        required: false
+        default: high
+        type: string
+    secrets:
+      anthropic_api_key:
+        required: true
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write # push the change branch; the main ruleset fences off main
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
+    steps:
+      - name: Verify ANTHROPIC_API_KEY is set
+        run: |
+          if [ -z "${ANTHROPIC_API_KEY}" ]; then
+            echo "::error::ANTHROPIC_API_KEY was not passed to the reusable workflow. Pass it under 'secrets:' in your caller workflow (or use 'secrets: inherit')." >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+
+      - name: Resolve change name
+        id: change
+        env:
+          INPUT_CHANGE: ${{ inputs.change }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          name="${INPUT_CHANGE}"
+          if [ -z "${name}" ]; then
+            case "${REF_NAME}" in
+              change/*) name="${REF_NAME#change/}" ;;
+              *) echo "::error::No 'change' input given and branch '${REF_NAME}' is not 'change/<name>'." >&2; exit 1 ;;
+            esac
+          fi
+          if [ ! -d "openspec/changes/${name}" ]; then
+            echo "::error::No directory found at openspec/changes/${name}/" >&2
+            exit 1
+          fi
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+
+      # Mirrors remcc's precedence: a declared package.json#packageManager is
+      # authoritative; otherwise a lone bun lockfile -> bun; pnpm must declare a
+      # version (pnpm/action-setup has no default).
+      - name: Resolve package manager
+        id: pm
+        run: |
+          set -euo pipefail
+          if [ ! -f package.json ]; then
+            echo "::error::package.json not found at repo root (Specfly supports pnpm- or bun-managed repos only)." >&2
+            exit 1
+          fi
+          pm="$(jq -r '.packageManager // empty' package.json)"
+          case "${pm}" in
+            pnpm@*) name=pnpm ;;
+            bun@*)  name=bun ;;
+            "")
+              if [ -f bun.lock ] || [ -f bun.lockb ]; then
+                name=bun
+              else
+                echo "::error::Set package.json#packageManager to 'pnpm@<version>' or 'bun@<version>'." >&2
+                exit 1
+              fi ;;
+            *) echo "::error::Unsupported packageManager '${pm}' (must start with 'pnpm@' or 'bun@')." >&2; exit 1 ;;
+          esac
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          echo "Resolved package manager: ${name}"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - if: steps.pm.outputs.name == 'pnpm'
+        uses: pnpm/action-setup@v4
+      - if: steps.pm.outputs.name == 'bun'
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Claude Code and OpenSpec CLIs
+        run: npm install -g @anthropic-ai/claude-code @fission-ai/openspec@latest
+
+      - name: Install workspace dependencies
+        run: ${{ steps.pm.outputs.name }} install --frozen-lockfile
+
+      - name: Configure git identity
+        run: |
+          # TODO: once the Specfly App is registered, author commits as the App's
+          # numeric bot identity (<id>+specfly[bot]@users.noreply.github.com).
+          git config user.name "specfly[bot]"
+          git config user.email "specfly[bot]@users.noreply.github.com"
+
+      - name: Run /opsx:apply
+        id: apply
+        continue-on-error: true
+        env:
+          CHANGE_NAME: ${{ steps.change.outputs.name }}
+          MODEL: ${{ inputs.model }}
+          EFFORT: ${{ inputs.effort }}
+        run: |
+          set -o pipefail
+          # Stream NDJSON to apply.jsonl (raw audit trail) and a human-readable
+          # distillation to the Actions console.
+          claude --dangerously-skip-permissions \
+            --model "${MODEL}" \
+            --effort "${EFFORT}" \
+            --output-format stream-json --verbose \
+            -p "/opsx:apply ${CHANGE_NAME}" 2>&1 \
+            | tee apply.jsonl \
+            | jq --unbuffered -r '
+                if .type == "assistant" then
+                  (.message.content // []) | map(
+                    if .type == "text" then .text
+                    elif .type == "tool_use" then "→ \(.name)"
+                    else empty end) | join("\n")
+                elif .type == "result" then "[done] \(.subtype // "?") cost_usd=\(.total_cost_usd // 0)"
+                else empty end'
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate change
+        continue-on-error: true
+        env:
+          CHANGE_NAME: ${{ steps.change.outputs.name }}
+        run: openspec validate "${CHANGE_NAME}"
+
+      - name: Commit and push change branch
+        env:
+          CHANGE_NAME: ${{ steps.change.outputs.name }}
+          BRANCH: change/${{ steps.change.outputs.name }}
+        run: |
+          set -euo pipefail
+          git add -A
+          git reset -- apply.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "opsx:apply ${CHANGE_NAME}"
+            git push origin "HEAD:refs/heads/${BRANCH}"
+          fi
+          # The Specfly backend opens/updates the PR as Specfly[bot] after this
+          # push. The runner deliberately does NOT open the PR.
+
+      - name: Upload agent logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: specfly-apply-${{ steps.change.outputs.name || 'unresolved' }}
+          path: apply.jsonl
+          if-no-files-found: ignore
+          retention-days: 14
