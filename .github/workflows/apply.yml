@@ -1,8 +1,8 @@
 # Specfly — reusable apply workflow (workflow_call)
 #
-# STATUS: early scaffold. Architecture is settled (see DESIGN.md); the exact
-# Claude Code invocation, the backend dispatch/PR handshake, and verify reporting
-# are still being wired.
+# STATUS: dispatch → apply → push handshake is wired. The Claude Code invocation
+# is settled (see DESIGN.md); verify reporting and the optional head_sha checkout
+# (briefing-wire §2A/§5) remain as future hardening.
 #
 # Adopters don't edit this — they reference it from a thin caller workflow
 # triggered by repository_dispatch from the Specfly backend. See
@@ -11,6 +11,16 @@
 # Division of labour: the runner CODES and PUSHES the change branch (using the
 # job's built-in GITHUB_TOKEN, contents:write). The Specfly App/backend opens the
 # PR as Specfly[bot] — a separate actor, so you can approve it and CI triggers.
+#
+# Manual end-to-end test (gated on the App + backend existing; run once they do).
+# In a test adopter repo with the App installed, the backend deployed, and a
+# protected main:
+#   1. Push a commit whose subject starts with "@specfly:apply <name>".
+#   2. Backend fires repository_dispatch (type specfly-apply) → this workflow runs.
+#   3. Confirm Checkout lands on change/<name> (NOT the default branch).
+#   4. /opsx:apply runs and pushes a commit with subject "opsx:apply <name>".
+#   5. Backend's push webhook opens/updates the PR as Specfly[bot].
+#   6. Confirm NO dispatch loop (the result subject is not @specfly:apply).
 
 name: Specfly Apply
 
@@ -66,7 +76,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.ref }}
+          # repository_dispatch runs this workflow AS DEFINED ON THE DEFAULT
+          # BRANCH, so github.ref/github.ref_name point at the default branch —
+          # NOT change/<name>. Derive the branch from inputs.change instead
+          # (Actions evaluates `A && B || C` as a ternary): a dispatched run
+          # checks out refs/heads/change/<name>, where openspec/changes/<name>/
+          # exists; fall back to github.ref only for a direct change/* push that
+          # passes no input.
+          ref: ${{ inputs.change != '' && format('refs/heads/change/{0}', inputs.change) || github.ref }}
 
       - name: Resolve change name
         id: change
@@ -131,10 +148,17 @@ jobs:
 
       - name: Configure git identity
         run: |
-          # TODO: once the Specfly App is registered, author commits as the App's
-          # numeric bot identity (<id>+specfly[bot]@users.noreply.github.com).
+          # COSMETIC commit attribution ONLY. 287375800 is the registered Specfly
+          # App's real, fixed bot user id (hardcoded, no placeholder). This sets
+          # the commit author/committer and nothing else. It deliberately does NOT:
+          #   - make commits GPG-"Verified" (only API-authored commits are), and
+          #   - change the webhook `sender` of the result push. That push is
+          #     authenticated by GITHUB_TOKEN, so the backend ALWAYS sees it as
+          #     sender == github-actions[bot] — which is exactly what its
+          #     result-detection keys on. Do NOT "fix" this with a PAT/App token to
+          #     change the sender or chase a "Verified" badge.
           git config user.name "specfly[bot]"
-          git config user.email "specfly[bot]@users.noreply.github.com"
+          git config user.email "287375800+specfly[bot]@users.noreply.github.com"
 
       - name: Run /opsx:apply
         id: apply
@@ -180,11 +204,21 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
+            # Subject MUST stay "opsx:apply <name>" — it must NOT start with
+            # @specfly:apply, which the backend would classify as a new trigger
+            # and re-dispatch, looping. apply.jsonl is excluded above so the audit
+            # log never lands in the result commit.
             git commit -m "opsx:apply ${CHANGE_NAME}"
+            # Pushed via the job's GITHUB_TOKEN (actions/checkout's default
+            # persist-credentials: true; no custom push token).
             git push origin "HEAD:refs/heads/${BRANCH}"
           fi
-          # The Specfly backend opens/updates the PR as Specfly[bot] after this
-          # push. The runner deliberately does NOT open the PR.
+          # Implicit push → PR-open handshake; there is NO runner → backend
+          # callback. This push — observed by GitHub as sender github-actions[bot]
+          # (the GITHUB_TOKEN actor, NOT specfly[bot]) — is the signal the Specfly
+          # backend's `push` webhook handler uses to open/update the PR as
+          # Specfly[bot], a separate actor so the PR is approvable and CI triggers.
+          # The runner deliberately does NOT open the PR.
 
       - name: Upload agent logs
         if: always()

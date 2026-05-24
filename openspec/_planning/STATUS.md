@@ -16,6 +16,13 @@ per-task detail in the briefings.
   — `apply.yml` has a job-level `concurrency` guard (latest-wins, `cancel-in-progress`);
   the result path atomically claims the dispatched run before acting, so a losing/
   redelivered result can't double-open a PR or double-fire the CI-refresh commit.
+- **Apply runner wired** (`apply.yml`) _(change `wire-apply-runner`)_ — dispatched
+  runs now check out `change/<name>` (the old `ref: github.ref` grabbed the default
+  branch on `repository_dispatch`); applied commits are authored as the bot identity
+  (`287375800+specfly[bot]@…`, cosmetic only — the result-push `sender` stays
+  `github-actions[bot]`); the implicit push → PR-open handshake is documented (no
+  runner → backend callback). Manual e2e plan recorded in the workflow header;
+  `actionlint` clean.
 - **GitHub App `specfly` registered** — bot id **287375800**
   (`287375800+specfly[bot]@users.noreply.github.com`); App ID / private key / webhook
   secret held by the maintainer for deploy.
@@ -24,10 +31,9 @@ per-task detail in the briefings.
 
 ## Pick up here (in order)
 
-1. **Finish wiring `apply.yml`** — per [briefing-wire.md](briefing-wire.md). It's
-   scaffolded + carries the concurrency guard, but open items remain: commit as the
-   bot identity (App id 287375800 — TODO still at `apply.yml:134`), optional `head_sha`
-   checkout (§2A), and verify reporting (§5).
+1. **Optional `apply.yml` hardening** (deferred from `wire-apply-runner`, not
+   blocking v1) — per [briefing-wire.md](briefing-wire.md): the `head_sha` checkout
+   (§2A) for determinism under concurrent pushes, and verify reporting (§5).
 2. **Deploy the backend** (maintainer; runbook in `backend/README.md`):
    `wrangler d1 create` → migrations → `wrangler secret put` APP_ID / PRIVATE_KEY /
    WEBHOOK_SECRET / STATE_HMAC_KEY → `wrangler deploy` → point `api.specfly.io/webhook`
