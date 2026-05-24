@@ -25,9 +25,9 @@ running Claude Code — happens in your Actions on your Anthropic key. Specfly o
 routes the trigger and authors the PR.
 
 ```
-  label "specfly:apply"  →  Specfly App webhook  →  repository_dispatch
-     →  your runner runs /opsx:apply + pushes change/<name>
-     →  Specfly[bot] opens the PR  →  you review, approve, merge
+  push a commit "@specfly:apply…" on change/<name>  →  Specfly App (push webhook)
+     →  repository_dispatch  →  your runner runs /opsx:apply + pushes the result
+     →  Specfly[bot] opens the PR (once apply completes)  →  you review, approve, merge
 ```
 
 Because the PR is authored by `Specfly[bot]` (a separate actor), you can approve
@@ -57,7 +57,8 @@ it yourself and your CI still triggers.
    ```
 
 4. **(Recommended) Protect `main`** — require a PR + 1 approval, block direct
-   pushes. Documented, not auto-configured (Specfly never asks for admin rights).
+   pushes. Documented, not auto-configured (Specfly never asks for admin rights):
+   **[docs/protect-main.md](docs/protect-main.md)** (UI walkthrough + one `gh` command).
 
 ## Scope
 

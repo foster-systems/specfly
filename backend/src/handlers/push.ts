@@ -1,0 +1,113 @@
+// `push` event handler. Delegates the trigger/result/ignore decision to the pure
+// `classifyPush`, then does the D1 lookups and GitHub calls. All persisted state
+// is keyed by HMAC digests recomputed from the payload — no plaintext is stored,
+// and no repo/account identifier is ever logged.
+
+import type { App } from "@octokit/app";
+import {
+  dispatch,
+  findOpenPr,
+  installationOctokit,
+  openPullRequest,
+  pushEmptyCommit,
+  type Repo,
+} from "../github";
+import {
+  findDispatchedRunByRepoBranchKey,
+  findRunByTriggerKey,
+  insertRun,
+  markRunPrOpened,
+} from "../db";
+import { classifyPush, parseApplyArgs, parseRef } from "../logic";
+import { repoBranchKey, triggerKey } from "../state";
+import type { Env, PushPayload } from "../types";
+
+export async function handlePush(
+  env: Env,
+  app: App,
+  payload: PushPayload,
+): Promise<void> {
+  const parsed = parseRef(payload.ref);
+  if (!parsed) return; // not a change/* branch — ignore
+
+  const repoFullName = payload.repository.full_name;
+  const branch = parsed.branch;
+  const branchDigest = await repoBranchKey(
+    env.STATE_HMAC_KEY,
+    repoFullName,
+    branch,
+  );
+
+  const dispatchedRun = await findDispatchedRunByRepoBranchKey(
+    env.DB,
+    branchDigest,
+  );
+  const classification = classifyPush(payload, dispatchedRun !== null);
+  if (classification === "ignore") return;
+
+  const installationId = payload.installation?.id;
+  if (installationId == null) return; // cannot authenticate without it
+
+  const repo: Repo = {
+    owner: payload.repository.owner.login,
+    repo: payload.repository.name,
+  };
+
+  if (classification === "trigger") {
+    const tip = payload.head_commit;
+    if (!tip) return;
+    const triggerDigest = await triggerKey(
+      env.STATE_HMAC_KEY,
+      repoFullName,
+      tip.id,
+    );
+
+    // Idempotency (§13): a run for this exact sha means this is a redelivery.
+    if (await findRunByTriggerKey(env.DB, triggerDigest)) return;
+
+    const args = parseApplyArgs(tip.message);
+    const octokit = await installationOctokit(app, installationId);
+    await dispatch(octokit, repo, {
+      change: parsed.changeName,
+      branch,
+      head_sha: tip.id,
+      model: args.model,
+      effort: args.effort,
+    });
+    await insertRun(env.DB, {
+      triggerKey: triggerDigest,
+      repoBranchKey: branchDigest,
+    });
+    return;
+  }
+
+  // classification === "result"
+  if (!dispatchedRun) return; // defensive: classifyPush already required one
+
+  // Claim the branch's dispatched run BEFORE acting. This atomic UPDATE gates the
+  // GitHub action: D1 serializes concurrent writers, so a losing concurrent or
+  // redelivered result claims 0 rows and no-ops here — it cannot double-open a PR
+  // or double-fire the CI-refresh commit. (If the claim succeeds but the GitHub
+  // call below then throws, the row is left pr_opened with no PR; that orphan is
+  // recoverable via a fresh @specfly:apply and is TTL-swept — see README.)
+  const claimed = await markRunPrOpened(env.DB, branchDigest);
+  if (claimed === 0) return; // another result already claimed this branch
+
+  const octokit = await installationOctokit(app, installationId);
+  const openPr = await findOpenPr(octokit, repo, branch);
+
+  if (openPr === null) {
+    // First apply: open the App-authored PR (fires adopter CI, approvable).
+    await openPullRequest(
+      octokit,
+      repo,
+      branch,
+      parsed.changeName,
+      payload.repository.default_branch,
+    );
+  } else {
+    // Re-run: PR already open. Refresh CI with one empty App commit (§11.5),
+    // never a duplicate PR.
+    await pushEmptyCommit(octokit, repo, branch);
+  }
+}

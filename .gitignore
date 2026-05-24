@@ -5,3 +5,7 @@ node_modules/
 .env
 .env.*
 dist/
+
+# Specfly backend (Cloudflare Worker)
+backend/.dev.vars
+backend/.wrangler/

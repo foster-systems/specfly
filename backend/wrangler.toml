@@ -1,0 +1,16 @@
+# Specfly control-plane Worker.
+# Secrets (APP_ID, PRIVATE_KEY, WEBHOOK_SECRET) are NEVER set here — they are
+# provided via `.dev.vars` (local, gitignored) and `wrangler secret put` (remote).
+name = "specfly"
+main = "src/index.ts"
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "specfly"
+database_id = "<filled-by-runbook>"  # `wrangler d1 create specfly` prints this
+
+# Daily TTL sweep of aged `runs` rows (see `scheduled` in src/index.ts).
+[triggers]
+crons = ["0 3 * * *"]
