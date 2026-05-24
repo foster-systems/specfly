@@ -1,0 +1,14 @@
+# Copy to `.dev.vars` (gitignored) and fill for local `wrangler dev`.
+# Never commit real values. In production these are set via `wrangler secret put`.
+#
+# APP_ID         — the GitHub App's numeric id.
+# PRIVATE_KEY    — the App's PEM private key. For .dev.vars, put it on one line
+#                  with literal \n between lines, or use a single-line PKCS#8 key.
+# WEBHOOK_SECRET — the App webhook signing secret.
+# STATE_HMAC_KEY — secret keying the stored run-state digests (any high-entropy
+#                  string locally; `openssl rand -hex 32` in production).
+
+APP_ID=
+PRIVATE_KEY=
+WEBHOOK_SECRET=
+STATE_HMAC_KEY=

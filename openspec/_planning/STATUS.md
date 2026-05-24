@@ -24,6 +24,13 @@ this is the short "start here" for the next session.
   Metadata: read; Push + Pull request events. Bot user id **287375800** → commit
   email `287375800+specfly[bot]@users.noreply.github.com`. App ID / private key /
   webhook secret held by the maintainer for deploy.
+- **Built the Cloudflare backend** (`backend/`) — Hono Worker with `POST /webhook`
+  (raw-body HMAC verify → classify push → dispatch / open PR / CI-refresh) and
+  `GET /` health; D1 schema (`installations`, `runs`) + migration; pure decision
+  core in `src/logic.ts`. `tsc --noEmit` clean, `vitest` green (27 tests, incl. a
+  signature accept/reject), `wrangler deploy --dry-run` builds, `wrangler dev` serves
+  `GET /`. `nodejs_compat` enabled as a safety net (builds clean either way; see
+  `backend/README.md`). Deploy is the gated runbook in `backend/README.md` (step 3).
 
 ## Architecture (settled, "B2")
 
@@ -37,9 +44,10 @@ billing, no code/compute/token custody.
 
 ## Pick up here (in order)
 
-1. **Build the Cloudflare backend** — full spec in
-   [briefing-build.md](briefing-build.md). Run a fresh session: _"build the Specfly
-   backend per briefing-build.md"_. Parallel-safe with step 2. Verify against its §17.
+1. ✅ **Build the Cloudflare backend** — **DONE.** Built in `backend/` per
+   [briefing-build.md](briefing-build.md): typechecks, 27 tests pass, dry-run
+   deploys, `wrangler dev` serves `GET /`. Verified against §17. The
+   `client_payload` contract for step 2 is documented in `backend/README.md`.
 2. **Wire `apply.yml`** — full spec in [briefing-wire.md](briefing-wire.md). Run a
    fresh session: _"wire apply.yml per briefing-wire.md"_. Parallel-safe with step 1.
    The bot-identity email is concrete now (`287375800+specfly[bot]@…`). Verify §5.

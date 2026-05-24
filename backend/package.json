@@ -1,0 +1,26 @@
+{
+  "name": "specfly-backend",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Specfly control-plane Cloudflare Worker — GitHub App webhook router.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:dry": "wrangler deploy --dry-run",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "migrate:local": "wrangler d1 migrations apply specfly --local"
+  },
+  "dependencies": {
+    "@octokit/app": "16.1.2",
+    "hono": "4.12.22"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260524.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.7",
+    "wrangler": "4.94.0"
+  }
+}
