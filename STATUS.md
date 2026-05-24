@@ -31,7 +31,8 @@ Hosted control plane (GitHub App + tiny Cloudflare Workers backend at
 `api.specfly.io`) dispatches into the adopter's own Actions (BYO Anthropic key).
 Trigger: a `@specfly:apply` commit pushed to `change/<name>` → backend matches it
 on the push webhook → `repository_dispatch` → runner applies + pushes the result →
-backend opens the PR as `Specfly[bot]`. Free/open; no
+backend opens the PR as `Specfly[bot]` (and on re-applies pushes an empty commit as
+the bot to re-fire CI on the existing PR). Free/open; no
 billing, no code/compute/token custody.
 
 ## Pick up here (in order)

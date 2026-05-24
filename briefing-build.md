@@ -27,7 +27,10 @@ exactly two jobs and nothing else:
    `change/<name>`, open a pull request authored by `Specfly[bot]` (the GitHub App
    identity). An App-authored PR is a separate actor (so a solo maintainer can
    approve it) **and** triggers the adopter's CI (a `GITHUB_TOKEN`-authored PR
-   would not — that is the entire reason this backend exists).
+   would not — that is the entire reason this backend exists). On a **re-run** (the
+   PR already exists), the backend instead pushes one empty commit as the App to
+   re-fire CI — a `GITHUB_TOKEN` push to an open PR would not (same anti-recursion
+   reason). See §11.3.
 
 It also tracks GitHub App `installation` events so it knows which installation id
 to authenticate as per repo.
@@ -76,7 +79,9 @@ commits the result, pushes change/<name> using the built-in GITHUB_TOKEN
   │   → mint installation token
   │   → if no open PR for head=change/<name>: POST /repos/{owner}/{repo}/pulls
   │       { title, head:"change/<name>", base:<default_branch>, body, draft:false }
-  │   → UPDATE run row (status="pr_opened", pr_number=<n>)
+  │       → UPDATE run row (status="pr_opened", pr_number=<n>)
+  │   → else (PR already open = re-run): push one empty commit as the App via the
+  │       Git Data API so the adopter CI re-fires (§11.5); UPDATE run row
   │
   ▼
 Specfly[bot] PR exists → adopter CI triggers → human approves → merges
@@ -88,6 +93,10 @@ Key invariants:
 - A `GITHUB_TOKEN` push cannot trigger Actions (anti-recursion), so the loop is
   safe; webhooks still fire for it, which is how the backend learns the result
   landed.
+- The App's empty CI-refresh commit (re-runs) is pushed as `specfly[bot]` (the
+  installation token), not `github-actions[bot]`, with a non-`@specfly:apply`
+  subject — so it classifies as neither trigger nor result and cannot loop. Its
+  sole job is to re-fire CI, which a `GITHUB_TOKEN` push to an open PR cannot do.
 
 ---
 
@@ -286,8 +295,8 @@ Then:
 4. `INSERT` a `runs` row: `status="dispatched"`, `trigger_sha`, `delivery_id`.
 5. Respond 2xx.
 
-### 11.3 `push` event — result detection (open the PR)
-On a `push` that is **not** a trigger, open the PR **iff all** hold:
+### 11.3 `push` event — result detection (open or refresh the PR)
+On a `push` that is **not** a trigger, act **iff all** hold:
 - `ref` starts with `refs/heads/change/`.
 - `sender.login == "github-actions[bot]"` (the runner's `GITHUB_TOKEN` push).
 - A `runs` row exists for `(repo_full_name, branch)` with `status="dispatched"`.
@@ -295,14 +304,21 @@ On a `push` that is **not** a trigger, open the PR **iff all** hold:
 Then:
 1. Mint installation token.
 2. Check for an already-open PR: `GET /repos/{owner}/{repo}/pulls?state=open&head={owner}:change/<name>`.
-   If one exists, reuse its number (do not create a duplicate).
-3. Otherwise `POST /repos/{owner}/{repo}/pulls`:
+3. **No open PR (first apply):** `POST /repos/{owner}/{repo}/pulls`:
    ```json
    { "title": "Apply <name>", "head": "change/<name>",
      "base": "<repository.default_branch>", "draft": false,
      "body": "Applied by Specfly via `/opsx:apply`. Review, approve, merge." }
    ```
-4. `UPDATE` the run row: `status="pr_opened"`, `pr_number`, `updated_at`.
+   Opening the PR is an App action, so it triggers the adopter's CI. `UPDATE` the
+   run row: `status="pr_opened"`, `pr_number`, `updated_at`.
+4. **PR already open (re-run):** do **not** create a duplicate. The runner's
+   `GITHUB_TOKEN` push to an existing PR does not re-fire CI (anti-recursion), so
+   refresh it by pushing **one empty commit as the App** (§11.5). `UPDATE` the run
+   row (`updated_at`; keep `status="pr_opened"`). Push it unconditionally — for an
+   adopter with **no CI** it is a harmless no-op; do **not** read check state to
+   suppress it (that would need `Checks: read`, a permission the App deliberately
+   does not hold).
 5. Respond 2xx.
 
 > If a dispatched run produces **no** result push (apply made no changes, or
@@ -317,6 +333,27 @@ Then:
 - `classifyPush(payload, hasDispatchedRun): "trigger" | "result" | "ignore"`.
 
 Keeping these pure makes the decision rules testable without GitHub or D1.
+
+Also account for the App's own empty CI-refresh push (§11.5): it arrives as
+`sender == specfly[bot]` with a non-`@specfly:apply` subject, so `classifyPush`
+returns `"ignore"` — no special case needed, but cover it in a test.
+
+### 11.5 Pushing the empty CI-refresh commit (App, Git Data API)
+Used by §11.3 step 4 on a re-run. Every call uses the installation token (App
+actor), so the resulting `push` / `pull_request:synchronize` event is **not**
+suppressed by anti-recursion and re-fires the adopter's CI. No new permission —
+this is `Contents: write`, already held (§10).
+
+1. `GET /repos/{o}/{r}/git/ref/heads/change/<name>` → current head `sha`.
+2. `GET /repos/{o}/{r}/git/commits/{sha}` → its `tree.sha`.
+3. `POST /repos/{o}/{r}/git/commits`
+   `{ message:"chore: re-run CI", tree:<tree.sha>, parents:[<sha>] }`
+   → new commit `sha2` (same tree as the parent ⇒ no file changes).
+4. `PATCH /repos/{o}/{r}/git/refs/heads/change/<name>` `{ sha:<sha2> }` (no force).
+
+The subject (`chore: re-run CI`) MUST NOT start with `@specfly:apply`, and the push
+arrives as `sender == specfly[bot]`, so its `push` webhook classifies as `ignore`
+(neither trigger nor result) — it cannot loop.
 
 ---
 
@@ -338,7 +375,12 @@ beyond what's needed to document the contract.
   dispatch. The "already-open PR" check (§11.3.2) prevents a duplicate PR.
 - **Multiple commits in one push:** evaluate the **tip** (`head_commit`) only.
 - **Re-apply (second `@specfly:apply` on same branch):** new `trigger_sha` → new
-  run row → re-dispatch; the result push updates the existing PR (no new PR).
+  run row → re-dispatch; the runner's result push updates the existing PR (no new
+  PR), and since that `GITHUB_TOKEN` push can't re-fire CI, the backend pushes one
+  empty commit as the App to re-trigger it (§11.3 step 4, §11.5).
+- **The App's empty CI-refresh push:** arrives as `sender == specfly[bot]` with a
+  non-`@specfly:apply` subject → `classifyPush` returns `ignore`; it neither
+  dispatches nor re-opens/refreshes (no loop).
 - **Human pushes a non-prefixed commit while a run is dispatched:** sender is human,
   not `github-actions[bot]` → not classified as a result → no premature PR.
 - **Unknown event / unmatched push:** respond 2xx and ignore.
@@ -385,8 +427,9 @@ Do not execute — the maintainer holds the secrets. Document precisely:
    inlined.
 3. Signature verification rejects bad signatures (test present & passing) and runs
    before any payload parsing.
-4. `push` handler implements §11.2 (trigger) and §11.3 (result) with the exact
-   `client_payload` shape from §11.2 and the §13 idempotency guards.
+4. `push` handler implements §11.2 (trigger) and §11.3 (result) — including the
+   re-run CI-refresh empty commit (§11.3 step 4 / §11.5) when a PR is already open —
+   with the exact `client_payload` shape from §11.2 and the §13 idempotency guards.
 5. `installation` handler upserts/deletes per §11.1.
 6. Pure logic is isolated in `src/logic.ts` and unit-tested; `vitest` passes.
 7. `tsc --noEmit` passes; `wrangler deploy --dry-run` succeeds (note any

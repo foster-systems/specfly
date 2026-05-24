@@ -75,7 +75,9 @@ Actions. The backend only routes events and authors the PR.
 - Requested permissions on the adopter's repo: **Pull requests: write** +
   **Contents: read & write** + **Metadata: read**. Contents: write is mandatory,
   not optional — `POST …/dispatches` (repository_dispatch) and `POST …/pulls`
-  (open the PR) both require it. Subscribes to **branch `push`** (the trigger
+  (open the PR) both require it; the same permission also covers the CI-refresh
+  empty commit pushed on re-runs (§7 step 4), so that adds no new scope. Subscribes
+  to **branch `push`** (the trigger
   detector + result detector) and `pull_request` (lifecycle/history).
 - Notably does **not** request `Administration: write` — branch protection is the
   adopter's job, documented (see §6.3).
@@ -180,7 +182,16 @@ snippet are written up in **[docs/protect-main.md](docs/protect-main.md)**.
    (subject `opsx:apply <name>` — no prefix, so it can't re-trigger). The backend
    sees that result push and opens the PR as **`Specfly[bot]`** — a distinct actor,
    so you (the reviewer) can approve it and your CI triggers. No PR exists before apply completes.
-4. Review the PR - findings may produce extra tasks to be applied. Re-run them with **`@specfly:apply`**. This loop can continue until the reviewer (you) is happy.
+4. Review the PR — findings may produce extra tasks to be applied. Re-run them
+   with **`@specfly:apply`**: each run pushes more commits to `change/<name>` and
+   the existing PR updates in place (no new PR is opened). Those result commits are
+   pushed with the runner's `GITHUB_TOKEN`, which on its own would _not_ re-fire CI
+   (GitHub's anti-recursion rule — see §11 Q1), so the backend refreshes CI by
+   pushing one empty commit as **`Specfly[bot]`**; an App-authored push does trigger
+   workflows. The backend does this only when a PR is already open (a re-run); for
+   an adopter with no CI the empty commit is a harmless no-op (nothing to trigger),
+   so no check on CI state is needed. This loop can continue until the reviewer
+   (you) is happy.
 5. Finally, you _archive_ the change with `claude /opsx:archive`, push that last commit, and then approve and merge the PR.
 
 ## 8. Upgrades
@@ -227,7 +238,20 @@ scale is **maintainer time** (support, on-call) — not dollars.
    ruleset makes CI a required status check, the PR could never be merged without
    manual intervention. A GitHub App installation token is exempt from that rule,
    so a `Specfly[bot]`-authored PR triggers CI like a human's. For a tool whose
-   entire output is generated code, that safety net must fire automatically. The
+   entire output is generated code, that safety net must fire automatically.
+   The same rule bites on re-runs: when `@specfly:apply` runs again the runner
+   pushes result commits to the already-open PR with `GITHUB_TOKEN`, so CI would
+   stay silent. The backend handles this by pushing one empty commit as the App
+   (an installation-token push, exempt from the rule) to re-fire CI — reusing the
+   App's existing `Contents: write` (§4.1), no new permission. Re-requesting the
+   check suite (`Checks: write`) was rejected: it needs a check suite to already
+   exist on that SHA, which the suppressed `GITHUB_TOKEN` push never creates, so it
+   would target nothing — a new permission bought for a mechanism that never fires.
+   The empty-commit path needs no CI-state check either: the backend pushes it only
+   when a PR is already open (a re-run), and for an adopter with no CI it is a
+   harmless no-op. Suppressing even that no-op would itself need a read permission
+   (`Checks: read`) the App deliberately doesn't hold — not worth it on an
+   already-registered App, where every adopter would have to re-consent. The
    analysis below is kept for the record.
    - **Yes (chosen)** → keep the hosted App + backend so the PR is
      authored by `Specfly[bot]`; PRs opened by an App **do** trigger the
