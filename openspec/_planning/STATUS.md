@@ -23,6 +23,13 @@ per-task detail in the briefings.
   `github-actions[bot]`); the implicit push → PR-open handshake is documented (no
   runner → backend callback). Manual e2e plan recorded in the workflow header;
   `actionlint` clean.
+- **Apply runner hardened** (`apply.yml`) _(change `harden-apply-runner` — archived)_ —
+  checkout now prefers the dispatched `head_sha` (detached, deterministic under
+  concurrent pushes; branch-tip fallback keeps older callers working), the result push
+  is fail-closed on divergence (no `--force`), and apply/validate outcomes report to the
+  job summary + `::warning` annotations (report-only — branch still pushes, run stays
+  green). Caller passes `head_sha` from `client_payload`; `actionlint` clean. Delta
+  synced into `openspec/specs/apply-runner/`.
 - **GitHub App `specfly` registered** — bot id **287375800**
   (`287375800+specfly[bot]@users.noreply.github.com`); App ID / private key / webhook
   secret held by the maintainer for deploy.
@@ -31,14 +38,11 @@ per-task detail in the briefings.
 
 ## Pick up here (in order)
 
-1. **Optional `apply.yml` hardening** (deferred from `wire-apply-runner`, not
-   blocking v1) — per [briefing-wire.md](briefing-wire.md): the `head_sha` checkout
-   (§2A) for determinism under concurrent pushes, and verify reporting (§5).
-2. **Deploy the backend** (maintainer; runbook in `backend/README.md`):
+1. **Deploy the backend** (maintainer; runbook in `backend/README.md`):
    `wrangler d1 create` → migrations → `wrangler secret put` APP_ID / PRIVATE_KEY /
    WEBHOOK_SECRET / STATE_HMAC_KEY → `wrangler deploy` → point `api.specfly.io/webhook`
    + the App's webhook URL at it → redeliver a webhook to smoke-test.
-3. **Cut & tag `v1`** so `uses: …/apply.yml@v1` resolves (adopters reference `@v1`,
+2. **Cut & tag `v1`** so `uses: …/apply.yml@v1` resolves (adopters reference `@v1`,
    not a sha). The concurrency guard reaches adopters only once `v1` includes it —
    move/re-tag `v1` after the supersede change.
 

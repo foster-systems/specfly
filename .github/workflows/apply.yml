@@ -1,8 +1,9 @@
 # Specfly — reusable apply workflow (workflow_call)
 #
-# STATUS: dispatch → apply → push handshake is wired. The Claude Code invocation
-# is settled (see DESIGN.md); verify reporting and the optional head_sha checkout
-# (briefing-wire §2A/§5) remain as future hardening.
+# STATUS: dispatch → apply → push handshake is wired, and hardened — the checkout
+# prefers the dispatched head_sha (deterministic under concurrent pushes, with a
+# fail-closed non-force push), and apply/validate outcomes are reported to the job
+# summary and as annotations. The Claude Code invocation is settled (see DESIGN.md).
 #
 # Adopters don't edit this — they reference it from a thin caller workflow
 # triggered by repository_dispatch from the Specfly backend. See
@@ -30,6 +31,11 @@ on:
       change:
         description: "OpenSpec change name to apply (defaults to the change/<name> branch)."
         required: false
+        type: string
+      head_sha:
+        description: "Dispatched trigger sha to check out (detached) for determinism. Empty falls back to the change/<name> branch tip."
+        required: false
+        default: ""
         type: string
       model:
         description: "Claude model (e.g. sonnet, opus)."
@@ -78,12 +84,17 @@ jobs:
           fetch-depth: 0
           # repository_dispatch runs this workflow AS DEFINED ON THE DEFAULT
           # BRANCH, so github.ref/github.ref_name point at the default branch —
-          # NOT change/<name>. Derive the branch from inputs.change instead
-          # (Actions evaluates `A && B || C` as a ternary): a dispatched run
-          # checks out refs/heads/change/<name>, where openspec/changes/<name>/
-          # exists; fall back to github.ref only for a direct change/* push that
-          # passes no input.
-          ref: ${{ inputs.change != '' && format('refs/heads/change/{0}', inputs.change) || github.ref }}
+          # NOT change/<name>. Resolve the ref by preference (Actions evaluates
+          # `A && B || C` as a ternary, nested here):
+          #   1. inputs.head_sha — the dispatched trigger sha; checked out as a
+          #      DETACHED HEAD so /opsx:apply runs against the exact tree the
+          #      backend saw (deterministic under concurrent pushes to the branch).
+          #   2. else refs/heads/change/<name> — the branch tip, where
+          #      openspec/changes/<name>/ exists (older callers that don't pass
+          #      head_sha land here; backward-compatible).
+          #   3. else github.ref — a direct change/* push that passes no input.
+          # fetch-depth: 0 is kept so the bare head_sha is fetchable.
+          ref: ${{ inputs.head_sha != '' && inputs.head_sha || (inputs.change != '' && format('refs/heads/change/{0}', inputs.change) || github.ref) }}
 
       - name: Resolve change name
         id: change
@@ -188,6 +199,7 @@ jobs:
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Validate change
+        id: validate
         continue-on-error: true
         env:
           CHANGE_NAME: ${{ steps.change.outputs.name }}
@@ -210,8 +222,16 @@ jobs:
             # log never lands in the result commit.
             git commit -m "opsx:apply ${CHANGE_NAME}"
             # Pushed via the job's GITHUB_TOKEN (actions/checkout's default
-            # persist-credentials: true; no custom push token).
-            git push origin "HEAD:refs/heads/${BRANCH}"
+            # persist-credentials: true; no custom push token). Deliberately NO
+            # --force/--force-with-lease: when head_sha was checked out and the
+            # branch tip has since moved, the result is not a fast-forward and
+            # this push is REJECTED. That fail-closed behavior is intentional — we
+            # refuse to clobber newer human commits. The concurrency guard
+            # supersedes in-flight applies, so divergence is the rare exception.
+            if ! git push origin "HEAD:refs/heads/${BRANCH}"; then
+              echo "::error::Push to ${BRANCH} rejected (non-fast-forward): the branch tip diverged from the checked-out sha during the apply, so newer commits would be overwritten. Failing closed without force-pushing — re-trigger @specfly:apply to apply against the current tip." >&2
+              exit 1
+            fi
           fi
           # Implicit push → PR-open handshake; there is NO runner → backend
           # callback. This push — observed by GitHub as sender github-actions[bot]
@@ -219,6 +239,46 @@ jobs:
           # backend's `push` webhook handler uses to open/update the PR as
           # Specfly[bot], a separate actor so the PR is approvable and CI triggers.
           # The runner deliberately does NOT open the PR.
+
+      - name: Report apply & validation outcome
+        if: always()
+        env:
+          APPLY_EXIT: ${{ steps.apply.outputs.exit_code }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+          CHANGE_NAME: ${{ steps.change.outputs.name }}
+        run: |
+          # Observability ONLY. This step does NOT gate the push and does NOT
+          # fail the job: apply + validate keep continue-on-error, the branch is
+          # pushed regardless, and the run stays green unless an infra step errors.
+          # It consumes steps.apply.outputs.exit_code (produced earlier but
+          # previously unread) and steps.validate.outcome, surfacing both to the
+          # job summary and as ::warning annotations when either failed.
+          apply_exit="${APPLY_EXIT:-unknown}"
+          validate_outcome="${VALIDATE_OUTCOME:-unknown}"
+          if [ "${apply_exit}" = "0" ]; then
+            apply_status="✅ success"
+          else
+            apply_status="⚠️ failed (exit ${apply_exit})"
+          fi
+          if [ "${validate_outcome}" = "success" ]; then
+            validate_status="✅ success"
+          else
+            validate_status="⚠️ ${validate_outcome}"
+          fi
+          {
+            echo "## Specfly apply — ${CHANGE_NAME}"
+            echo ""
+            echo "| Step | Outcome |"
+            echo "| --- | --- |"
+            echo "| /opsx:apply | ${apply_status} |"
+            echo "| openspec validate | ${validate_status} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${apply_exit}" != "0" ]; then
+            echo "::warning::/opsx:apply exited ${apply_exit} for change '${CHANGE_NAME}'. The branch was still pushed for review."
+          fi
+          if [ "${validate_outcome}" != "success" ]; then
+            echo "::warning::openspec validate '${CHANGE_NAME}' did not succeed (${validate_outcome}). The branch was still pushed for review."
+          fi
 
       - name: Upload agent logs
         if: always()

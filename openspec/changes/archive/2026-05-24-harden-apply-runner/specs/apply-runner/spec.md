@@ -1,8 +1,5 @@
-# apply-runner Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by syncing change wire-apply-runner. Update Purpose after archive.
-## Requirements
 ### Requirement: Check out the dispatched change branch
 
 The reusable apply workflow (`.github/workflows/apply.yml`) SHALL check out the exact
@@ -51,28 +48,6 @@ retain `fetch-depth: 0` so the dispatched sha is fetchable.
 - **THEN** its `openspec/changes/<name>` existence check passes and the change name
   resolves without altering the existing resolve logic
 
-### Requirement: Author applied commits as the Specfly bot identity
-
-The workflow SHALL configure the commit author/committer as the registered Specfly
-App bot: `user.name` `specfly[bot]` and `user.email`
-`287375800+specfly[bot]@users.noreply.github.com`, where `287375800` is the App's real
-bot user id, hardcoded with no placeholder. This attribution is cosmetic only: it
-SHALL NOT be relied upon to make commits GPG-"Verified", and it SHALL NOT change the
-webhook `sender` of the result push. The workflow MUST record these facts in comments.
-
-#### Scenario: Commits attribute to the bot identity
-
-- **WHEN** `/opsx:apply` produces commits on the change branch
-- **THEN** their author/committer email is
-  `287375800+specfly[bot]@users.noreply.github.com` with name `specfly[bot]`
-
-#### Scenario: Identity does not change the result-push sender
-
-- **WHEN** the resulting branch is pushed using the job's `GITHUB_TOKEN`
-- **THEN** the push's webhook `sender` is `github-actions[bot]` (not `specfly[bot]`),
-  matching the backend's result-detection criteria, regardless of the configured
-  commit identity
-
 ### Requirement: Push the result branch as the implicit PR-open handshake
 
 The workflow SHALL push the applied `change/<name>` branch using the built-in
@@ -112,6 +87,8 @@ backend's push webhook handler uses to open or update the PR as `Specfly[bot]`.
 
 - **WHEN** the workflow stages changes for the result commit
 - **THEN** `apply.jsonl` is excluded from the commit (e.g. via `git reset -- apply.jsonl`)
+
+## ADDED Requirements
 
 ### Requirement: Report apply and validation outcomes
 

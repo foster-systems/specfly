@@ -22,6 +22,10 @@ jobs:
     uses: foster-systems/specfly/.github/workflows/apply.yml@v1
     with:
       change: ${{ github.event.client_payload.change }}
+      # Pass the dispatched trigger sha so the apply runs against the exact tree
+      # the backend saw (determinism under concurrent pushes). Omitting it is a
+      # safe fallback — the reusable workflow then checks out the branch tip.
+      head_sha: ${{ github.event.client_payload.head_sha }}
       model: ${{ github.event.client_payload.model || 'sonnet' }}
       effort: ${{ github.event.client_payload.effort || 'high' }}
     secrets:
