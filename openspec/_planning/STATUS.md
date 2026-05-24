@@ -1,74 +1,45 @@
-# Specfly — status & pickup briefing
+# Specfly — status & pickup
 
 _Last updated: 2026-05-24._
 
-Where things stand and where to resume. Full rationale is in [DESIGN.md](DESIGN.md);
-this is the short "start here" for the next session.
+Short "start here." Rationale in [HIGH-LEVEL-DESIGN.md](HIGH-LEVEL-DESIGN.md);
+per-task detail in the briefings.
 
 ## Done
 
-- **Named** Specfly (chosen over SpecPilot — taken by an active same-purpose npm
-  CLI — and over Specwright/Spectrum). See DESIGN.md §12.
-- **Identities reserved:** npm `specfly` (placeholder `0.0.2`), domain
-  `specfly.io`, this repo `foster-systems/specfly` (public).
-- **Predecessor** `foster-systems/remcc` deprecated, README points here.
-- **Scaffold pushed:** reusable `.github/workflows/apply.yml`, the adopter caller
-  example, `README.md`, `LICENSE`, `DESIGN.md`.
-- **Resolved all DESIGN §11 decisions** (CI-on-PR → keep backend; trigger →
-  `@specfly:apply` commit prefix; prereqs → keep OpenSpec + pnpm/bun for now). See
-  Decisions below.
-- **Wrote build briefings** ([briefing-build.md](briefing-build.md),
-  [briefing-wire.md](briefing-wire.md)) and the adopter ruleset guide
-  ([docs/protect-main.md](docs/protect-main.md)).
-- **Registered the GitHub App `specfly`** — perms PR: write, Contents: read & write,
-  Metadata: read; Push + Pull request events. Bot user id **287375800** → commit
-  email `287375800+specfly[bot]@users.noreply.github.com`. App ID / private key /
-  webhook secret held by the maintainer for deploy.
-- **Built the Cloudflare backend** (`backend/`) — Hono Worker with `POST /webhook`
-  (raw-body HMAC verify → classify push → dispatch / open PR / CI-refresh) and
-  `GET /` health; D1 schema (`installations`, `runs`) + migration; pure decision
-  core in `src/logic.ts`. `tsc --noEmit` clean, `vitest` green (27 tests, incl. a
-  signature accept/reject), `wrangler deploy --dry-run` builds, `wrangler dev` serves
-  `GET /`. `nodejs_compat` enabled as a safety net (builds clean either way; see
-  `backend/README.md`). Deploy is the gated runbook in `backend/README.md` (step 3).
-
-## Architecture (settled, "B2")
-
-Hosted control plane (GitHub App + tiny Cloudflare Workers backend at
-`api.specfly.io`) dispatches into the adopter's own Actions (BYO Anthropic key).
-Trigger: a `@specfly:apply` commit pushed to `change/<name>` → backend matches it
-on the push webhook → `repository_dispatch` → runner applies + pushes the result →
-backend opens the PR as `Specfly[bot]` (and on re-applies pushes an empty commit as
-the bot to re-fire CI on the existing PR). Free/open; no
-billing, no code/compute/token custody.
+- **Backend built + privacy-hardened** (`backend/`) — Hono Worker: `POST /webhook`
+  (raw-body HMAC → classify push → dispatch / open PR / CI-refresh) and `GET /`.
+  State is HMAC-keyed digests only (no plaintext repo/branch/sha), TTL-swept by a
+  daily cron; no `installations` table. `tsc` clean, vitest **38** green, dry-run
+  builds. _(changes `build-backend`, `harden-backend-privacy` — archived.)_
+- **Concurrency + atomic claim** _(change `supersede-concurrent-applies` — archived)_
+  — `apply.yml` has a job-level `concurrency` guard (latest-wins, `cancel-in-progress`);
+  the result path atomically claims the dispatched run before acting, so a losing/
+  redelivered result can't double-open a PR or double-fire the CI-refresh commit.
+- **GitHub App `specfly` registered** — bot id **287375800**
+  (`287375800+specfly[bot]@users.noreply.github.com`); App ID / private key / webhook
+  secret held by the maintainer for deploy.
+- Naming, identities (npm/domain/repo), predecessor `remcc` deprecated, scaffold +
+  briefings + ruleset guide.
 
 ## Pick up here (in order)
 
-1. ✅ **Build the Cloudflare backend** — **DONE.** Built in `backend/` per
-   [briefing-build.md](briefing-build.md): typechecks, 27 tests pass, dry-run
-   deploys, `wrangler dev` serves `GET /`. Verified against §17. The
-   `client_payload` contract for step 2 is documented in `backend/README.md`.
-2. **Wire `apply.yml`** — full spec in [briefing-wire.md](briefing-wire.md). Run a
-   fresh session: _"wire apply.yml per briefing-wire.md"_. Parallel-safe with step 1.
-   The bot-identity email is concrete now (`287375800+specfly[bot]@…`). Verify §5.
-3. **Deploy the backend** (maintainer; runbook lands in `backend/README.md` from
-   step 1): `wrangler d1 create` → migrations → `wrangler secret put` APP_ID /
-   PRIVATE_KEY / WEBHOOK_SECRET → `wrangler deploy` → point `api.specfly.io/webhook`
-   and the App's webhook URL at it → redeliver a webhook to smoke-test.
-4. **Cut and tag `v1`** so `uses: foster-systems/specfly/...@v1` resolves; until
-   then adopters reference `@main`.
-
-## Decisions (DESIGN.md §11 — all resolved)
-
-- ~~CI-on-PR requirement~~ — **resolved: keep the backend** (2026-05-24).
-- ~~First-run trigger UX~~ — **resolved: `@specfly:apply` commit-prefix trigger**
-  (2026-05-24). Backend detects it on the push webhook → repository_dispatch →
-  runner applies → backend opens PR on the result push. No draft PR. See §11.2.
-- ~~Prerequisite reduction~~ — **resolved: keep OpenSpec + pnpm/bun hard-required
-  for now** (2026-05-24); broaden later (npm/yarn first) — additive, no redesign,
-  since both live in apply.yml setup and the control plane is agnostic. See §11.3.
+1. **Finish wiring `apply.yml`** — per [briefing-wire.md](briefing-wire.md). It's
+   scaffolded + carries the concurrency guard, but open items remain: commit as the
+   bot identity (App id 287375800 — TODO still at `apply.yml:134`), optional `head_sha`
+   checkout (§2A), and verify reporting (§5).
+2. **Deploy the backend** (maintainer; runbook in `backend/README.md`):
+   `wrangler d1 create` → migrations → `wrangler secret put` APP_ID / PRIVATE_KEY /
+   WEBHOOK_SECRET / STATE_HMAC_KEY → `wrangler deploy` → point `api.specfly.io/webhook`
+   + the App's webhook URL at it → redeliver a webhook to smoke-test.
+3. **Cut & tag `v1`** so `uses: …/apply.yml@v1` resolves (adopters reference `@v1`,
+   not a sha). The concurrency guard reaches adopters only once `v1` includes it —
+   move/re-tag `v1` after the supersede change.
 
 ## Pointers
 
-- predecessor: https://github.com/foster-systems/remcc (deprecated)
-- domain: `specfly.io` (registered)
+- briefings: [briefing-build.md](briefing-build.md), [briefing-wire.md](briefing-wire.md),
+  [briefing-apply-concurrency.md](briefing-apply-concurrency.md); ruleset:
+  `docs/protect-main.md`
+- App bot: `287375800+specfly[bot]@users.noreply.github.com`
+- predecessor (deprecated): `foster-systems/remcc`; domain `specfly.io`
