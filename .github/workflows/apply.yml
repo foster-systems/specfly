@@ -37,6 +37,17 @@ on:
 
 jobs:
   apply:
+    # Latest apply wins. Each @specfly:apply commit re-dispatches a fresh caller
+    # run; this job-level group coalesces all of them per change so a newer
+    # trigger cancels the in-flight apply BEFORE its "Commit and push" step — the
+    # stale run never clobbers the branch. The guard lives here (the reusable
+    # workflow) so every @v1 adopter inherits it without editing their caller.
+    # Keyed on inputs.change (passed by the caller from client_payload.change),
+    # which is reliably available in the called-workflow context — unlike
+    # github.event.client_payload.*, whose resolution here is not guaranteed.
+    concurrency:
+      group: specfly-apply-${{ inputs.change }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:

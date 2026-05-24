@@ -16,6 +16,9 @@ permissions:
 
 jobs:
   apply:
+    # Superseding/concurrency is handled by the reusable workflow (@v1): rapid
+    # same-branch @specfly:apply triggers coalesce to one effective apply, latest
+    # wins. You inherit this for free — no concurrency: needed in this caller.
     uses: foster-systems/specfly/.github/workflows/apply.yml@v1
     with:
       change: ${{ github.event.client_payload.change }}

@@ -1,26 +1,4 @@
-# pr-authoring Specification
-
-## Purpose
-TBD - created by archiving change build-backend. Update Purpose after archive.
-## Requirements
-### Requirement: Result detection criteria
-
-The system SHALL treat a `push` as a runner result only when ALL hold: the ref is
-under `refs/heads/change/`; the sender is `github-actions[bot]`; and a `runs` row
-exists for `(repo_full_name, branch)` with `status="dispatched"`. A push by a human,
-or by `specfly[bot]`, SHALL NOT be a result.
-
-#### Scenario: Runner push with a dispatched run is a result
-
-- **WHEN** `github-actions[bot]` pushes to `change/<name>` and a `dispatched` run
-  exists for that branch
-- **THEN** the push is handled as a result
-
-#### Scenario: Human push during a dispatched run is not a result
-
-- **WHEN** a human pushes a non-`@specfly:apply` commit to `change/<name>` while a run
-  is `dispatched`
-- **THEN** the push is not treated as a result and no PR is opened
+## MODIFIED Requirements
 
 ### Requirement: Open App-authored PR on first apply
 
@@ -85,22 +63,3 @@ result cannot push a second refresh commit.
 - **WHEN** the App's empty CI-refresh commit's `push` webhook is later delivered
 - **THEN** its subject does not start with `@specfly:apply` and its sender is
   `specfly[bot]`, so it classifies as `ignore` and cannot loop
-
-### Requirement: No-result runs remain dispatched
-
-The system SHALL leave a run row at `status="dispatched"` and open no PR when a
-dispatched run produces no result push (apply made no changes or failed). Such a row
-is no longer retained indefinitely: the `ephemeral-state` scheduled cleanup deletes it
-once it ages past the retention TTL. This known-state SHALL be documented in the
-backend README.
-
-#### Scenario: Apply with no changes leaves run dispatched
-
-- **WHEN** a dispatched apply produces no runner result push
-- **THEN** no PR is opened and the run row stays `status="dispatched"`
-
-#### Scenario: A stale dispatched run is reclaimed
-
-- **WHEN** a `dispatched` run with no result ages past the retention TTL
-- **THEN** the scheduled cleanup deletes the row
-

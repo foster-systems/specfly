@@ -42,18 +42,25 @@ export async function insertRun(
     .run();
 }
 
-/** Transition the dispatched run for a branch to pr_opened and bump updated_at. */
+/**
+ * Atomically claim a branch's dispatched run by transitioning it to pr_opened,
+ * returning the number of rows changed. This single UPDATE is the atomic claim
+ * that closes the result-path read→act→update race: D1 serializes concurrent
+ * writers, so of two near-simultaneous results only one sees `changes >= 1` and
+ * acts; the loser sees `0` and no-ops (see handlers/push.ts).
+ */
 export async function markRunPrOpened(
   db: D1Database,
   repoBranchKey: string,
-): Promise<void> {
-  await db
+): Promise<number> {
+  const result = await db
     .prepare(
       `UPDATE runs SET status = 'pr_opened', updated_at = datetime('now')
        WHERE repo_branch_key = ?1 AND status = 'dispatched'`,
     )
     .bind(repoBranchKey)
     .run();
+  return result.meta.changes;
 }
 
 /** TTL sweep: delete run rows whose updated_at is older than `days` days ago. */

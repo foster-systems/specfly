@@ -29,8 +29,9 @@ On a `push` webhook the backend classifies the event (`src/logic.ts`):
   to `change/<name>` → mint an installation token → fire a `repository_dispatch`
   (`event_type: specfly-apply`) → record a `dispatched` run.
 - **result** — `github-actions[bot]` pushes back to `change/<name>` while a
-  `dispatched` run exists → open an App-authored PR (first apply), or push one empty
-  CI-refresh commit as the App (re-run, PR already open).
+  `dispatched` run exists → **atomically claim** the dispatched run, then (only if the
+  claim won) open an App-authored PR (first apply), or push one empty CI-refresh commit
+  as the App (re-run, PR already open). See *Supersede & the atomic result claim* below.
 - **ignore** — everything else, including the App's own `specfly[bot]` CI-refresh
   push (so it can never loop).
 
@@ -49,7 +50,7 @@ backend/
     logic.ts          # PURE decision functions (unit-tested, no I/O)
     db.ts             # D1 query helpers (digest-keyed)
     types.ts          # Env bindings + shared types
-  test/               # logic + signature + state unit tests
+  test/               # logic + signature + state + push-handler unit tests
 ```
 
 ## Tech & edge-compatibility
@@ -79,7 +80,7 @@ npm run dev                        # wrangler dev → GET / should return ok
 Unit tests and the dry-run are sufficient without live App secrets:
 
 ```bash
-npm test           # vitest: pure logic + signature + state-hashing (35 tests)
+npm test           # vitest: logic + signature + state-hashing + push handler (38 tests)
 npm run typecheck  # tsc --noEmit
 npm run deploy:dry # wrangler deploy --dry-run
 ```
@@ -150,6 +151,45 @@ the runner job failed — the backend opens no PR and the `runs` row stays
 a row is no longer kept forever: the daily cron above deletes any `runs` row whose
 `updated_at` ages past the retention TTL (`RETENTION_DAYS`, default 7), so this state
 is self-reclaiming.
+
+## Supersede & the atomic result claim
+
+Two `@specfly:apply` commits pushed to the same `change/<name>` branch in quick
+succession each re-dispatch a fresh apply (by design — a new trigger sha re-dispatches).
+Two layers keep this from racing:
+
+- **Latest apply wins (the runner side).** The reusable `apply.yml` declares a
+  **job-level `concurrency`** group keyed per change (`specfly-apply-${{ inputs.change }}`)
+  with `cancel-in-progress: true`. All caller runs for one change share that group, so a
+  newer apply **cancels the in-flight one before its push step** — the stale run never
+  clobbers the branch, and the newest trigger is the one that pushes. The guard lives in
+  the reusable workflow, so every adopter on `@v1` inherits it with no change to their
+  copied caller.
+- **The atomic result claim (this backend).** On a `result`, the handler first runs the
+  single-statement claim `markRunPrOpened` —
+  `UPDATE runs SET status='pr_opened' … WHERE repo_branch_key=? AND status='dispatched'` —
+  and acts **only if it changed ≥ 1 row**. D1 serializes concurrent writers, so of two
+  near-simultaneous (or a redelivered) `result` pushes, only one claims the branch and
+  acts; the loser sees `0` rows changed and **no-ops** — no duplicate PR, no double
+  CI-refresh commit. The claim *precedes* the GitHub call, closing the prior
+  read→act→update window.
+
+**Claim-then-action-failure orphan.** If the claim wins but the subsequent GitHub call
+(open-PR / refresh) then throws (e.g. a GitHub 5xx), the row is left `pr_opened` with no
+PR. A redelivery finds no `dispatched` run and no-ops, so it is not re-opened
+automatically — but it is **recoverable**: a fresh `@specfly:apply` (new sha) mints a new
+dispatched run and re-opens, and the TTL sweep reclaims the orphan row. This is strictly
+better than the prior act-then-mark ordering, whose mark-failure path could *double*-fire
+the CI-refresh.
+
+> **Maintainer note — the guard reaches adopters only when `@v1` moves.** Adopters
+> reference `…/apply.yml@v1`, so the concurrency guard ships to them only once the **`v1`
+> tag is moved** to include this change. Re-tag `@v1` after merge.
+>
+> The optional `head_sha` checkout hardening (`../openspec/_planning/briefing-wire.md`
+> §2(A)) remains a **separate, independent** decision: under `cancel-in-progress` the
+> superseded apply is cancelled before it checks out and pushes, so its concurrent-trigger
+> race is moot here. Not bundled.
 
 ## Maintainer deploy runbook
 

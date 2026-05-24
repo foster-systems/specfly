@@ -83,6 +83,16 @@ export async function handlePush(
 
   // classification === "result"
   if (!dispatchedRun) return; // defensive: classifyPush already required one
+
+  // Claim the branch's dispatched run BEFORE acting. This atomic UPDATE gates the
+  // GitHub action: D1 serializes concurrent writers, so a losing concurrent or
+  // redelivered result claims 0 rows and no-ops here — it cannot double-open a PR
+  // or double-fire the CI-refresh commit. (If the claim succeeds but the GitHub
+  // call below then throws, the row is left pr_opened with no PR; that orphan is
+  // recoverable via a fresh @specfly:apply and is TTL-swept — see README.)
+  const claimed = await markRunPrOpened(env.DB, branchDigest);
+  if (claimed === 0) return; // another result already claimed this branch
+
   const octokit = await installationOctokit(app, installationId);
   const openPr = await findOpenPr(octokit, repo, branch);
 
@@ -100,8 +110,4 @@ export async function handlePush(
     // never a duplicate PR.
     await pushEmptyCommit(octokit, repo, branch);
   }
-
-  // Move the dispatched run to pr_opened so a redelivered result finds no
-  // dispatched run and won't double-commit. No PR number is stored.
-  await markRunPrOpened(env.DB, branchDigest);
 }
