@@ -15,7 +15,27 @@ export type InstallationOctokit = Awaited<
   ReturnType<App["getInstallationOctokit"]>
 >;
 
+// GitHub issues App private keys in PKCS#1 ("-----BEGIN RSA PRIVATE KEY-----"),
+// but @octokit/app's JWT layer (universal-github-app-jwt) only accepts PKCS#8
+// ("-----BEGIN PRIVATE KEY-----"). A PKCS#1 key passes construction and webhook
+// signature verification, then throws deep in token minting on the FIRST real
+// trigger — the webhook still returns 2xx, so no dispatch fires and the only clue
+// is a cryptic library message in `wrangler tail`. Fail fast at App init with the
+// exact remedy instead. (Health checks don't hit this path; createApp runs only
+// inside POST /webhook.)
+function assertPkcs8PrivateKey(privateKey: string): void {
+  if (/-----BEGIN RSA PRIVATE KEY-----/.test(privateKey)) {
+    throw new Error(
+      'PRIVATE_KEY is in PKCS#1 format ("BEGIN RSA PRIVATE KEY"), but token minting ' +
+        'requires PKCS#8 ("BEGIN PRIVATE KEY"). Convert it and re-set the secret:\n' +
+        "  openssl pkcs8 -topk8 -nocrypt -in <github-app-key>.pem -out k8.pem\n" +
+        "  wrangler secret put PRIVATE_KEY < k8.pem",
+    );
+  }
+}
+
 export function createApp(env: Env): App {
+  assertPkcs8PrivateKey(env.PRIVATE_KEY);
   return new App({
     appId: env.APP_ID,
     privateKey: env.PRIVATE_KEY,
