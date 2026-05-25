@@ -210,11 +210,25 @@ the CI-refresh.
 3. **Set the secrets** (never commit these):
    ```bash
    wrangler secret put APP_ID          # the App's numeric id
-   wrangler secret put PRIVATE_KEY      # the App's PEM private key (paste whole file)
+   wrangler secret put PRIVATE_KEY      # the App's PEM private key — MUST be PKCS#8 (see below)
    wrangler secret put WEBHOOK_SECRET   # the App webhook signing secret
    # Generate a random key for the run-state digests, then set it:
    openssl rand -hex 32 | wrangler secret put STATE_HMAC_KEY
    ```
+   > ⚠️ **`PRIVATE_KEY` must be PKCS#8.** GitHub issues App keys in **PKCS#1**
+   > (`-----BEGIN RSA PRIVATE KEY-----`), but the token-mint path
+   > (`@octokit/app` → `universal-github-app-jwt`) only accepts **PKCS#8**
+   > (`-----BEGIN PRIVATE KEY-----`). Pasting the raw GitHub key makes minting
+   > throw _"Private Key is in PKCS#1 format, but only PKCS#8 is supported"_ at
+   > the first real trigger (webhook still returns `2xx`, but no dispatch fires).
+   > Convert once, then set the converted file:
+   > ```bash
+   > openssl pkcs8 -topk8 -nocrypt -in <github-app-key>.pem -out app-key-pkcs8.pem
+   > wrangler secret put PRIVATE_KEY < app-key-pkcs8.pem
+   > rm app-key-pkcs8.pem
+   > ```
+   > `createApp` (`src/github.ts`) fails fast with this guidance if a PKCS#1 key
+   > is ever configured.
 4. **Deploy** — the `[triggers] crons` daily TTL sweep ships with the Worker; the
    deploy output lists it under *Cron Triggers*:
    ```bash
