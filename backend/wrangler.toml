@@ -6,10 +6,16 @@ main = "src/index.ts"
 compatibility_date = "2026-05-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Custom domain — the GitHub App webhook target. `custom_domain = true` auto-provisions
+# the DNS record + TLS cert (requires the specfly.io zone on this Cloudflare account).
+[[routes]]
+pattern = "api.specfly.io"
+custom_domain = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "specfly"
-database_id = "<filled-by-runbook>"  # `wrangler d1 create specfly` prints this
+database_id = "a86cfe75-4321-4585-a3d0-49be85a41127"
 
 # Daily TTL sweep of aged `runs` rows (see `scheduled` in src/index.ts).
 [triggers]
