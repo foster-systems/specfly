@@ -60,11 +60,15 @@ per-task detail in the briefings.
 1. **First live end-to-end apply** — push a real `@spec:apply` commit in an installed
    repo to exercise the dispatch → App-authored PR path that the deploy smoke test can't
    reach (this is what validates `APP_ID` / `PRIVATE_KEY` token-minting in production).
+   **Runbook:** [briefing-first-live-apply.md](briefing-first-live-apply.md) — prerequisites,
+   push steps, how to watch each hop, and triage.
+2. **Branding and promotion** - add a logo, revise README.md, create a simple specfly.io landing page.
 
 ## Pointers
 
 - briefings: [briefing-build.md](briefing-build.md), [briefing-wire.md](briefing-wire.md),
-  [briefing-apply-concurrency.md](briefing-apply-concurrency.md); ruleset:
+  [briefing-apply-concurrency.md](briefing-apply-concurrency.md),
+  [briefing-first-live-apply.md](briefing-first-live-apply.md); ruleset:
   `docs/protect-main.md`
 - App bot: `287375800+specfly[bot]@users.noreply.github.com`
 - predecessor (deprecated): `foster-systems/remcc`; domain `specfly.io`
