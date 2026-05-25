@@ -32,15 +32,43 @@ per-task detail in the briefings.
   synced into `openspec/specs/apply-runner/`.
 - **GitHub App `specfly` registered** — bot id **287375800**
   (`287375800+specfly[bot]@users.noreply.github.com`); App ID / private key / webhook
-  secret held by the maintainer for deploy.
+  secret held by the maintainer for deploy. Owned by the `foster-systems` org
+  (App ID `3836245`, slug `specfly`). **Visibility: private** ("Only on this account")
+  — to be **made public later** ("Any account") so the `https://github.com/apps/specfly`
+  install page resolves for outside adopters. _(Settings → Apps → specfly → "Where can
+  this GitHub App be installed?")_
+- **First live end-to-end apply — PASSED** (2026-05-25) 🎉 — the dispatch → App-authored
+  PR path that the deploy smoke test couldn't reach is now validated in production
+  (incl. `APP_ID`/`PRIVATE_KEY` token-minting). Adopter: `foster-systems/foster-systems`
+  (the Astro foster.systems site, `pnpm@10.33.4`, OpenSpec + `.claude/` OPSX commands)
+  converted from the deprecated `remcc` path → first **specfly** adopter (App installed,
+  `ANTHROPIC_API_KEY` set, `main` protected, caller `specfly.yml` merged via PR #16). A
+  human `@spec:apply add-humans-txt` push exercised all 7 pass criteria: webhook `202` →
+  token mint → `repository_dispatch` → "Specfly Apply" run (checkout resolved the change
+  branch, not `main`) → `/opsx:apply` wrote `public/humans.txt` → result push `opsx:apply
+  add-humans-txt` → **App-authored PR #17 "Apply add-humans-txt"** by `app/specfly` →
+  adopter **CI fired on the PR** (Cloudflare Pages + build, proving the distinct-actor PR
+  re-triggers checks) → **D1 `dispatched` → `pr_opened`** → **no dispatch loop** (result
+  push & PR-open classified result/ignore; dormant remcc `opsx-apply.yml` skipped each
+  time). Took **3 triggers**: two surfaced real prod blockers, both fixed —
+  (1) `PRIVATE_KEY` was PKCS#1 not PKCS#8 → re-stored as PKCS#8 (+ `createApp` fail-fast
+  guard, see below); (2) the repo's `ANTHROPIC_API_KEY` was a stale remcc-era key →
+  maintainer set a valid one.
+- **PKCS#8 private-key guard + docs** (2026-05-25, **uncommitted**) — `createApp`
+  (`backend/src/github.ts`) now fail-fasts on a PKCS#1 `PRIVATE_KEY` with the exact
+  `openssl pkcs8 -topk8` remedy (instead of the cryptic `universal-github-app-jwt` error
+  that only surfaces at the first real trigger); `backend/README.md` deploy runbook
+  documents the PKCS#8 requirement + conversion; `backend/test/github.test.ts` covers it.
+  `tsc` clean, **40** vitest green. _Backend redeploy optional_ (prod already holds a
+  PKCS#8 key, so the guard is a safety net for future (re)deploys).
 - **Backend deployed to production** (2026-05-25, runbook in `backend/README.md`) —
   Worker live at `https://api.specfly.io/webhook` (D1 `specfly` =
   `a86cfe75-4321-4585-a3d0-49be85a41127`, migration `0001` applied `--remote`; all four
   secrets set; daily TTL cron `0 3 * * *` shipped). `workers.dev` auto-disabled by the
   custom-domain route, so the Worker is reachable only at `api.specfly.io`. Smoke-tested:
-  `401` on a bad signature, `202` on a real GitHub-signed redelivery. **Not yet
-  exercised:** the live dispatch → App-authored PR path (fires on the first real
-  `@spec:apply` push in an installed repo).
+  `401` on a bad signature, `202` on a real GitHub-signed redelivery. The live dispatch →
+  App-authored PR path is now **exercised end-to-end** (see "First live end-to-end apply"
+  above).
 - **`v1` tagged** (2026-05-25) — annotated `v1` → `f091035` (force-moved here after the
   keyword rename below; `4547b1f` at first cut), so `uses: …/apply.yml@v1` carries the
   `cancel-in-progress` concurrency guard and the `@spec:apply` error text. Future releases
@@ -57,11 +85,16 @@ per-task detail in the briefings.
 
 ## Pick up here (in order)
 
-1. **First live end-to-end apply** — push a real `@spec:apply` commit in an installed
-   repo to exercise the dispatch → App-authored PR path that the deploy smoke test can't
-   reach (this is what validates `APP_ID` / `PRIVATE_KEY` token-minting in production).
-   **Runbook:** [briefing-first-live-apply.md](briefing-first-live-apply.md) — prerequisites,
-   push steps, how to watch each hop, and triage.
+1. **Close out the live-apply test** (small follow-ups; the path itself PASSED — see Done):
+   - **Commit the PKCS#8 guard + docs** (`backend/src/github.ts`, `backend/README.md`,
+     `backend/test/github.test.ts`) and this STATUS update. _Optional:_ `wrangler deploy`
+     to ship the guard (safety net only — prod key is already PKCS#8).
+   - **Dispose of the test artifacts in `foster-systems/foster-systems`:** PR #17
+     ("Apply add-humans-txt") is a real, valid addition — merge it or close it; then delete
+     the `change/add-humans-txt` branch. (Two `pr_opened` rows in D1 are a benign artifact
+     of the earlier failed-apply trigger sharing the branch digest; the daily TTL cron
+     reclaims them — no action needed.)
+   - **Make the App public** when ready for outside adopters (see App bullet in Done).
 2. **Branding and promotion** - add a logo, revise README.md, create a simple specfly.io landing page.
 
 ## Pointers
