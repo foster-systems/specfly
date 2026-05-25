@@ -20,7 +20,7 @@
 
 ## 1. The problem
 
-Two `@specfly:apply` commits pushed to the same `change/<name>` branch in quick
+Two `@spec:apply` commits pushed to the same `change/<name>` branch in quick
 succession (before the first apply finishes) produce **N parallel apply jobs that
 race to push to one branch**, with nothing superseding the earlier, now-stale run.
 
@@ -28,7 +28,7 @@ This is half by-design and half a gap:
 
 - **By design:** a new trigger sha re-dispatches. The spec
   `apply-dispatch` → *"Re-apply with a new sha re-dispatches"* explicitly requires a
-  new `@specfly:apply` commit (new sha → new `trigger_key`) to create a new run and
+  new `@spec:apply` commit (new sha → new `trigger_key`) to create a new run and
   fire a fresh dispatch. So the backend correctly fires a second `repository_dispatch`.
 - **The gap:** nothing **cancels or supersedes** the first, in-flight apply. The
   intended "latest apply wins" semantics are not enforced anywhere — not in the
@@ -63,7 +63,7 @@ The mechanism, so the design starts from facts not guesses:
 
 1. **Trigger classification ignores the DB.** `classifyPush`
    (`backend/src/logic.ts:60`) returns `"trigger"` purely on *change-branch + human
-   sender + `@specfly:apply` marker*. It never consults existing runs.
+   sender + `@spec:apply` marker*. It never consults existing runs.
 2. **The only trigger dedup is per-sha.** The handler's idempotency guard is
    `findRunByTriggerKey` (`push.ts:66`); `trigger_key = HMAC(repo, sha)`. It suppresses
    **redeliveries of the same commit** only — two different shas are two different
@@ -155,14 +155,14 @@ guard (issue A), and a decision on whether to also close the result-path race
 - The privacy model just shipped in `harden-backend-privacy` (HMAC-keyed runs, TTL
   cron, no `installations`) — build on it, don't revisit it.
 - Trigger/result/ignore classification logic (`src/logic.ts`) and the
-  `@specfly:apply` marker.
+  `@spec:apply` marker.
 - The `client_payload` contract shape, GitHub permissions, and the deploy runbook.
 - Prerequisite policy (DESIGN §11.3) and the package-manager hard-fail.
 
 **Must-nots:**
 - Don't make the backend refuse to re-dispatch on a new sha (breaks an accepted spec
   requirement).
-- Don't make the runner's result-commit subject start with `@specfly:apply` (loop).
+- Don't make the runner's result-commit subject start with `@spec:apply` (loop).
 - Don't replace `GITHUB_TOKEN` on the push.
 
 ---
@@ -181,7 +181,7 @@ guard (issue A), and a decision on whether to also close the result-path race
 
 ## 7. Acceptance criteria sketch (for the verifier of the eventual change)
 
-1. Two `@specfly:apply` commits pushed in quick succession to one `change/<name>`
+1. Two `@spec:apply` commits pushed in quick succession to one `change/<name>`
    result in exactly one effective apply driving the PR/CI action; the superseded
    apply is cancelled (cancel mode) or cleanly runs without clobbering (queue mode) —
    per the chosen semantics.

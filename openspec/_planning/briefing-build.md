@@ -20,7 +20,7 @@ A tiny, stateless-ish **webhook router** that is the Specfly control plane. It d
 exactly two jobs and nothing else:
 
 1. **Trigger:** when a developer pushes a commit whose subject starts with
-   `@specfly:apply` to a `change/<name>` branch in an adopter repo, fire a
+   `@spec:apply` to a `change/<name>` branch in an adopter repo, fire a
    `repository_dispatch` (`event_type: specfly-apply`) into that repo so the
    adopter's own GitHub Actions runner runs `/opsx:apply`.
 2. **PR authoring:** when the runner pushes the applied result back to
@@ -60,11 +60,11 @@ to authenticate as per repo.
 ## 3. The exact flow (sequence)
 
 ```
-Developer pushes "@specfly:apply …" commit to change/<name>   (human credentials)
+Developer pushes "@spec:apply …" commit to change/<name>   (human credentials)
   │
   ├─▶ GitHub delivers `push` webhook → POST /webhook
   │       backend verifies HMAC signature
-  │       branch matches change/* AND tip-commit subject starts "@specfly:apply"
+  │       branch matches change/* AND tip-commit subject starts "@spec:apply"
   │       AND sender is NOT github-actions[bot]
   │   → mint installation token
   │   → POST /repos/{owner}/{repo}/dispatches { event_type:"specfly-apply", client_payload:{…} }
@@ -88,13 +88,13 @@ Specfly[bot] PR exists → adopter CI triggers → human approves → merges
 ```
 
 Key invariants:
-- The runner's result commit subject is `opsx:apply <name>` (no `@specfly:apply`
+- The runner's result commit subject is `opsx:apply <name>` (no `@spec:apply`
   prefix) so it can never re-trigger a dispatch.
 - A `GITHUB_TOKEN` push cannot trigger Actions (anti-recursion), so the loop is
   safe; webhooks still fire for it, which is how the backend learns the result
   landed.
 - The App's empty CI-refresh commit (re-runs) is pushed as `specfly[bot]` (the
-  installation token), not `github-actions[bot]`, with a non-`@specfly:apply`
+  installation token), not `github-actions[bot]`, with a non-`@spec:apply`
   subject — so it classifies as neither trigger nor result and cannot loop. Its
   sole job is to re-fire CI, which a `GITHUB_TOKEN` push to an open PR cannot do.
 
@@ -192,7 +192,7 @@ CREATE TABLE IF NOT EXISTS runs (
   installation_id INTEGER NOT NULL,
   branch          TEXT NOT NULL,      -- "change/<name>"
   change_name     TEXT NOT NULL,      -- "<name>"
-  trigger_sha     TEXT NOT NULL,      -- the @specfly:apply commit sha (idempotency key)
+  trigger_sha     TEXT NOT NULL,      -- the @spec:apply commit sha (idempotency key)
   status          TEXT NOT NULL,      -- 'dispatched' | 'pr_opened' | 'failed'
   pr_number       INTEGER,
   delivery_id     TEXT,               -- X-GitHub-Delivery of the trigger
@@ -276,7 +276,7 @@ and the tip commit (`head_commit` — its `id` (sha) and `message`).
 
 Fire a dispatch **iff all** hold:
 - `ref` starts with `refs/heads/change/` → derive `branch` and `change_name`.
-- `head_commit.message`'s **first line** starts with `@specfly:apply` (trim
+- `head_commit.message`'s **first line** starts with `@spec:apply` (trim
   leading whitespace; case-sensitive).
 - `sender.login != "github-actions[bot]"` (i.e. a human/normal push, not the runner).
 - **Idempotency:** no existing `runs` row with this `(repo_full_name, trigger_sha)`.
@@ -328,14 +328,14 @@ Then:
 
 ### 11.4 Pure logic to factor into `src/logic.ts` (unit-tested, no I/O)
 - `parseRef(ref): { branch, changeName } | null` — only for `refs/heads/change/*`.
-- `isTriggerCommit(firstLine): boolean` — starts with `@specfly:apply`.
+- `isTriggerCommit(firstLine): boolean` — starts with `@spec:apply`.
 - `parseApplyArgs(firstLine): { model?, effort? }`.
 - `classifyPush(payload, hasDispatchedRun): "trigger" | "result" | "ignore"`.
 
 Keeping these pure makes the decision rules testable without GitHub or D1.
 
 Also account for the App's own empty CI-refresh push (§11.5): it arrives as
-`sender == specfly[bot]` with a non-`@specfly:apply` subject, so `classifyPush`
+`sender == specfly[bot]` with a non-`@spec:apply` subject, so `classifyPush`
 returns `"ignore"` — no special case needed, but cover it in a test.
 
 ### 11.5 Pushing the empty CI-refresh commit (App, Git Data API)
@@ -351,7 +351,7 @@ this is `Contents: write`, already held (§10).
    → new commit `sha2` (same tree as the parent ⇒ no file changes).
 4. `PATCH /repos/{o}/{r}/git/refs/heads/change/<name>` `{ sha:<sha2> }` (no force).
 
-The subject (`chore: re-run CI`) MUST NOT start with `@specfly:apply`, and the push
+The subject (`chore: re-run CI`) MUST NOT start with `@spec:apply`, and the push
 arrives as `sender == specfly[bot]`, so its `push` webhook classifies as `ignore`
 (neither trigger nor result) — it cannot loop.
 
@@ -374,12 +374,12 @@ beyond what's needed to document the contract.
   `(repo_full_name, trigger_sha)` + the "no existing run" check prevent a double
   dispatch. The "already-open PR" check (§11.3.2) prevents a duplicate PR.
 - **Multiple commits in one push:** evaluate the **tip** (`head_commit`) only.
-- **Re-apply (second `@specfly:apply` on same branch):** new `trigger_sha` → new
+- **Re-apply (second `@spec:apply` on same branch):** new `trigger_sha` → new
   run row → re-dispatch; the runner's result push updates the existing PR (no new
   PR), and since that `GITHUB_TOKEN` push can't re-fire CI, the backend pushes one
   empty commit as the App to re-trigger it (§11.3 step 4, §11.5).
 - **The App's empty CI-refresh push:** arrives as `sender == specfly[bot]` with a
-  non-`@specfly:apply` subject → `classifyPush` returns `ignore`; it neither
+  non-`@spec:apply` subject → `classifyPush` returns `ignore`; it neither
   dispatches nor re-opens/refreshes (no loop).
 - **Human pushes a non-prefixed commit while a run is dispatched:** sender is human,
   not `github-actions[bot]` → not classified as a result → no premature PR.
