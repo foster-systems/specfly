@@ -46,7 +46,8 @@ per-task detail in the briefings.
   human `@spec:apply add-humans-txt` push exercised all 7 pass criteria: webhook `202` →
   token mint → `repository_dispatch` → "Specfly Apply" run (checkout resolved the change
   branch, not `main`) → `/opsx:apply` wrote `public/humans.txt` → result push `opsx:apply
-  add-humans-txt` → **App-authored PR #17 "Apply add-humans-txt"** by `app/specfly` →
+  add-humans-txt` → **App-authored PR #17 "Apply add-humans-txt"** by `app/specfly`
+  (since **merged** → `public/humans.txt` now on the adopter's `main`) →
   adopter **CI fired on the PR** (Cloudflare Pages + build, proving the distinct-actor PR
   re-triggers checks) → **D1 `dispatched` → `pr_opened`** → **no dispatch loop** (result
   push & PR-open classified result/ignore; dormant remcc `opsx-apply.yml` skipped each
@@ -54,13 +55,14 @@ per-task detail in the briefings.
   (1) `PRIVATE_KEY` was PKCS#1 not PKCS#8 → re-stored as PKCS#8 (+ `createApp` fail-fast
   guard, see below); (2) the repo's `ANTHROPIC_API_KEY` was a stale remcc-era key →
   maintainer set a valid one.
-- **PKCS#8 private-key guard + docs** (2026-05-25, **uncommitted**) — `createApp`
-  (`backend/src/github.ts`) now fail-fasts on a PKCS#1 `PRIVATE_KEY` with the exact
+- **PKCS#8 private-key guard + docs** (2026-05-25, **merged — PR #4**) — `createApp`
+  (`backend/src/github.ts`) fail-fasts on a PKCS#1 `PRIVATE_KEY` with the exact
   `openssl pkcs8 -topk8` remedy (instead of the cryptic `universal-github-app-jwt` error
   that only surfaces at the first real trigger); `backend/README.md` deploy runbook
   documents the PKCS#8 requirement + conversion; `backend/test/github.test.ts` covers it.
-  `tsc` clean, **40** vitest green. _Backend redeploy optional_ (prod already holds a
-  PKCS#8 key, so the guard is a safety net for future (re)deploys).
+  `tsc` clean, **40** vitest green. _Backend redeploy still pending and optional_ (prod
+  already holds a PKCS#8 key, so the deployed guard is only a safety net for future
+  (re)deploys; the merged code isn't live until `wrangler deploy`).
 - **Backend deployed to production** (2026-05-25, runbook in `backend/README.md`) —
   Worker live at `https://api.specfly.io/webhook` (D1 `specfly` =
   `a86cfe75-4321-4585-a3d0-49be85a41127`, migration `0001` applied `--remote`; all four
@@ -85,17 +87,20 @@ per-task detail in the briefings.
 
 ## Pick up here (in order)
 
-1. **Close out the live-apply test** (small follow-ups; the path itself PASSED — see Done):
-   - **Commit the PKCS#8 guard + docs** (`backend/src/github.ts`, `backend/README.md`,
-     `backend/test/github.test.ts`) and this STATUS update. _Optional:_ `wrangler deploy`
-     to ship the guard (safety net only — prod key is already PKCS#8).
-   - **Dispose of the test artifacts in `foster-systems/foster-systems`:** PR #17
-     ("Apply add-humans-txt") is a real, valid addition — merge it or close it; then delete
-     the `change/add-humans-txt` branch. (Two `pr_opened` rows in D1 are a benign artifact
-     of the earlier failed-apply trigger sharing the branch digest; the daily TTL cron
-     reclaims them — no action needed.)
-   - **Make the App public** when ready for outside adopters (see App bullet in Done).
-2. **Branding and promotion** - add a logo, revise README.md, create a simple specfly.io landing page.
+1. **Branding and promotion** — add a logo, revise README.md, create a simple specfly.io
+   landing page. (The adopter `foster-systems/foster-systems` is itself an Astro site — a
+   natural reference for the landing page.)
+
+   _Optional / when-ready follow-ups from the live-apply test (none blocking; the path
+   PASSED and both PRs are merged):_
+   - **(optional) `cd backend && wrangler deploy`** to ship the PKCS#8 guard from PR #4.
+     Safety net only — prod already holds a PKCS#8 key, so the merged code isn't live until
+     this runs, but nothing breaks without it.
+   - **Make the App public** ("Any account") when ready for outside adopters — see App
+     bullet in Done.
+   - **Stale merged branches, safe to delete:** `harden-private-key-pkcs8` (specfly, PR #4),
+     `setup/specfly-caller` (adopter, PR #16). `change/add-humans-txt` was auto-deleted on
+     the PR #17 merge. (The two `pr_opened` D1 rows self-reclaim via the daily TTL cron.)
 
 ## Pointers
 
