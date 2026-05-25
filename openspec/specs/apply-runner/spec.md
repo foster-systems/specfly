@@ -83,7 +83,7 @@ NOT use `--force` or `--force-with-lease`; if the result commit is not a fast-fo
 the current branch tip (the tip diverged from the checked-out sha during the apply), the
 push SHALL fail closed with an explanatory error rather than overwrite newer commits. The
 workflow SHALL NOT make any runner → backend callback. The result-commit subject SHALL be
-`opsx:apply <name>` and MUST NOT start with `@specfly:apply` (which would re-trigger a
+`opsx:apply <name>` and MUST NOT start with `@spec:apply` (which would re-trigger a
 dispatch loop). The audit log `apply.jsonl` SHALL be excluded from the commit. A comment
 SHALL document that this push — observed as `github-actions[bot]` — is the signal the
 backend's push webhook handler uses to open or update the PR as `Specfly[bot]`.
@@ -106,7 +106,7 @@ backend's push webhook handler uses to open or update the PR as `Specfly[bot]`.
 
 - **WHEN** the workflow commits the applied changes
 - **THEN** the commit subject is `opsx:apply <name>` and does not start with
-  `@specfly:apply`, so the backend classifies the push as a result, not a new trigger
+  `@spec:apply`, so the backend classifies the push as a result, not a new trigger
 
 #### Scenario: Audit log is not committed
 

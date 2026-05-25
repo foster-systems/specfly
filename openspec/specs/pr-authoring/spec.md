@@ -18,7 +18,7 @@ or by `specfly[bot]`, SHALL NOT be a result.
 
 #### Scenario: Human push during a dispatched run is not a result
 
-- **WHEN** a human pushes a non-`@specfly:apply` commit to `change/<name>` while a run
+- **WHEN** a human pushes a non-`@spec:apply` commit to `change/<name>` while a run
   is `dispatched`
 - **THEN** the push is not treated as a result and no PR is opened
 
@@ -61,7 +61,7 @@ is already open the system SHALL push exactly one empty commit as the App via th
 Data API — read the branch head ref, read that commit's tree, create a new commit with
 the same tree and the head as parent, then fast-forward the ref (no force). A result
 that claimed no run SHALL NOT push a refresh commit. The commit subject MUST NOT start
-with `@specfly:apply`. This push arrives as `specfly[bot]`, so it re-fires the adopter's
+with `@spec:apply`. This push arrives as `specfly[bot]`, so it re-fires the adopter's
 CI (which a `GITHUB_TOKEN` push to an open PR cannot) yet classifies as `ignore`. The
 push SHALL be made unconditionally without reading check state (no `Checks: read`
 permission). Because the claim precedes the action, a redelivered or losing concurrent
@@ -83,7 +83,7 @@ result cannot push a second refresh commit.
 #### Scenario: Refresh commit cannot re-trigger
 
 - **WHEN** the App's empty CI-refresh commit's `push` webhook is later delivered
-- **THEN** its subject does not start with `@specfly:apply` and its sender is
+- **THEN** its subject does not start with `@spec:apply` and its sender is
   `specfly[bot]`, so it classifies as `ignore` and cannot loop
 
 ### Requirement: No-result runs remain dispatched

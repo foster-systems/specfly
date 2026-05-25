@@ -5,7 +5,7 @@
 import type { ApplyArgs, PushClassification, PushPayload } from "./types";
 
 const REF_PREFIX = "refs/heads/change/";
-const MARKER = "@specfly:apply";
+const MARKER = "@spec:apply";
 const RUNNER = "github-actions[bot]";
 
 /** First line of a commit message (everything before the first newline). */
@@ -25,7 +25,7 @@ export function parseRef(
 }
 
 /** True iff the (first) line, after trimming leading whitespace, starts with the
- *  `@specfly:apply` marker (case-sensitive). */
+ *  `@spec:apply` marker (case-sensitive). */
 export function isTriggerCommit(line: string): boolean {
   return firstLineOf(line).replace(/^\s+/, "").startsWith(MARKER);
 }
@@ -51,7 +51,7 @@ export function parseApplyArgs(line: string): ApplyArgs {
 /**
  * Classify an inbound push using only the payload plus whether a `dispatched`
  * run already exists for the branch:
- *  - human + `@specfly:apply` tip on `change/*`      → "trigger"
+ *  - human + `@spec:apply` tip on `change/*`      → "trigger"
  *  - `github-actions[bot]` + a dispatched run        → "result"
  *  - `specfly[bot]` CI-refresh / anything else        → "ignore"
  *
@@ -66,7 +66,7 @@ export function classifyPush(
   const sender = payload.sender?.login;
   const tip = payload.head_commit;
 
-  // Trigger: a human (never the runner) pushed an @specfly:apply tip commit.
+  // Trigger: a human (never the runner) pushed an @spec:apply tip commit.
   if (sender !== RUNNER && tip && isTriggerCommit(tip.message)) {
     return "trigger";
   }

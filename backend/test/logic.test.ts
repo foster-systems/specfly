@@ -38,17 +38,17 @@ describe("parseRef", () => {
 
 describe("isTriggerCommit", () => {
   it("matches the marker at the start", () => {
-    expect(isTriggerCommit("@specfly:apply")).toBe(true);
-    expect(isTriggerCommit("@specfly:apply model=opus")).toBe(true);
+    expect(isTriggerCommit("@spec:apply")).toBe(true);
+    expect(isTriggerCommit("@spec:apply model=opus")).toBe(true);
   });
 
   it("trims leading whitespace", () => {
-    expect(isTriggerCommit("   @specfly:apply")).toBe(true);
+    expect(isTriggerCommit("   @spec:apply")).toBe(true);
   });
 
   it("only considers the first line", () => {
-    expect(isTriggerCommit("@specfly:apply\nbody text")).toBe(true);
-    expect(isTriggerCommit("fix something\n@specfly:apply")).toBe(false);
+    expect(isTriggerCommit("@spec:apply\nbody text")).toBe(true);
+    expect(isTriggerCommit("fix something\n@spec:apply")).toBe(false);
   });
 
   it("is case-sensitive", () => {
@@ -63,21 +63,21 @@ describe("isTriggerCommit", () => {
 
 describe("parseApplyArgs", () => {
   it("parses known keys and ignores unknown", () => {
-    expect(parseApplyArgs("@specfly:apply model=opus effort=high foo=bar")).toEqual(
+    expect(parseApplyArgs("@spec:apply model=opus effort=high foo=bar")).toEqual(
       { model: "opus", effort: "high" },
     );
   });
 
   it("yields empty options when no args are present", () => {
-    expect(parseApplyArgs("@specfly:apply")).toEqual({});
+    expect(parseApplyArgs("@spec:apply")).toEqual({});
   });
 
   it("parses a single key", () => {
-    expect(parseApplyArgs("@specfly:apply effort=low")).toEqual({ effort: "low" });
+    expect(parseApplyArgs("@spec:apply effort=low")).toEqual({ effort: "low" });
   });
 
   it("ignores empty values", () => {
-    expect(parseApplyArgs("@specfly:apply model=")).toEqual({});
+    expect(parseApplyArgs("@spec:apply model=")).toEqual({});
   });
 });
 
@@ -98,18 +98,18 @@ function pushPayload(over: {
     installation: { id: 42 },
     sender: { login: over.sender ?? "alice" },
     head_commit:
-      subject === null ? null : { id: "abc123", message: subject ?? "@specfly:apply" },
+      subject === null ? null : { id: "abc123", message: subject ?? "@spec:apply" },
   };
 }
 
 describe("classifyPush", () => {
-  it("classifies a human @specfly:apply push as trigger", () => {
-    const p = pushPayload({ sender: "alice", subject: "@specfly:apply" });
+  it("classifies a human @spec:apply push as trigger", () => {
+    const p = pushPayload({ sender: "alice", subject: "@spec:apply" });
     expect(classifyPush(p, false)).toBe("trigger");
   });
 
   it("is a trigger regardless of an existing dispatched run (idempotency is in the handler)", () => {
-    const p = pushPayload({ sender: "alice", subject: "@specfly:apply model=opus" });
+    const p = pushPayload({ sender: "alice", subject: "@spec:apply model=opus" });
     expect(classifyPush(p, true)).toBe("trigger");
   });
 
@@ -134,7 +134,7 @@ describe("classifyPush", () => {
   });
 
   it("ignores pushes to non-change branches", () => {
-    const p = pushPayload({ ref: "refs/heads/main", subject: "@specfly:apply" });
+    const p = pushPayload({ ref: "refs/heads/main", subject: "@spec:apply" });
     expect(classifyPush(p, false)).toBe("ignore");
   });
 

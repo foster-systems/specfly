@@ -40,7 +40,7 @@ per-task detail in the briefings.
   custom-domain route, so the Worker is reachable only at `api.specfly.io`. Smoke-tested:
   `401` on a bad signature, `202` on a real GitHub-signed redelivery. **Not yet
   exercised:** the live dispatch → App-authored PR path (fires on the first real
-  `@specfly:apply` push in an installed repo).
+  `@spec:apply` push in an installed repo).
 - **`v1` tagged** (2026-05-25) — annotated `v1` → `4547b1f` (merged `main`), pushed to
   origin, so `uses: …/apply.yml@v1` resolves to a commit carrying the `cancel-in-progress`
   concurrency guard. Future releases move it: `git tag -f v1 <sha> && git push -f origin v1`.
@@ -49,7 +49,7 @@ per-task detail in the briefings.
 
 ## Pick up here (in order)
 
-1. **First live end-to-end apply** — push a real `@specfly:apply` commit in an installed
+1. **First live end-to-end apply** — push a real `@spec:apply` commit in an installed
    repo to exercise the dispatch → App-authored PR path that the deploy smoke test can't
    reach (this is what validates `APP_ID` / `PRIVATE_KEY` token-minting in production).
 

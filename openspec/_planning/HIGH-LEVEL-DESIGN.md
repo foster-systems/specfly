@@ -49,7 +49,7 @@ into the **adopter's own data plane** (their GitHub Actions runner).
   ┌─────────────────────────────┐         ┌──────────────────────────────────┐
   │  ADOPTER'S REPO (data plane) │         │  SPECFLY (control plane)          │
   │                              │         │                                   │
-  │  push @specfly:apply     ────┼────────▶│  GitHub App webhook               │
+  │  push @spec:apply     ────┼────────▶│  GitHub App webhook               │
   │                              │         │    → (free: no entitlement gate)  │
   │  runner runs apply.yml  ◀────┼─────────┤    → repository_dispatch          │
   │    - checkout                │         │                                   │
@@ -176,14 +176,14 @@ snippet are written up in **[docs/protect-main.md](docs/protect-main.md)**.
 
 1. Local: `claude /opsx:propose` to design and plan the change, push `change/<name>` branch. Ordinary WIP pushes are
    free and silent.
-2. When ready, make a commit whose subject starts with **`@specfly:apply`** and
+2. When ready, make a commit whose subject starts with **`@spec:apply`** and
    push it. The backend (push webhook) matches the branch + prefix and dispatches.
 3. The runner runs `/opsx:apply` and pushes the result commits to `change/<name>`
    (subject `opsx:apply <name>` — no prefix, so it can't re-trigger). The backend
    sees that result push and opens the PR as **`Specfly[bot]`** — a distinct actor,
    so you (the reviewer) can approve it and your CI triggers. No PR exists before apply completes.
 4. Review the PR — findings may produce extra tasks to be applied. Re-run them
-   with **`@specfly:apply`**: each run pushes more commits to `change/<name>` and
+   with **`@spec:apply`**: each run pushes more commits to `change/<name>` and
    the existing PR updates in place (no new PR is opened). Those result commits are
    pushed with the runner's `GITHUB_TOKEN`, which on its own would _not_ re-fire CI
    (GitHub's anti-recursion rule — see §11 Q1), so the backend refreshes CI by
@@ -227,7 +227,7 @@ scale is **maintainer time** (support, on-call) — not dollars.
 | Upgrades          | re-copy templates via PR                    | bump a tag                              |
 | Branch protection | auto-configured by installer                | **documented, adopter-owned**           |
 | Backend           | none (all in adopter Actions)               | tiny free Cloudflare control plane      |
-| Trigger           | `@change-apply` commit subject              | `@specfly:apply` commit subject         |
+| Trigger           | `@change-apply` commit subject              | `@spec:apply` commit subject         |
 
 ## 11. Open questions to settle before building
 
@@ -239,7 +239,7 @@ scale is **maintainer time** (support, on-call) — not dollars.
    manual intervention. A GitHub App installation token is exempt from that rule,
    so a `Specfly[bot]`-authored PR triggers CI like a human's. For a tool whose
    entire output is generated code, that safety net must fire automatically.
-   The same rule bites on re-runs: when `@specfly:apply` runs again the runner
+   The same rule bites on re-runs: when `@spec:apply` runs again the runner
    pushes result commits to the already-open PR with `GITHUB_TOKEN`, so CI would
    stay silent. The backend handles this by pushing one empty commit as the App
    (an installation-token push, exempt from the rule) to re-fire CI — reusing the
@@ -262,7 +262,7 @@ scale is **maintainer time** (support, on-call) — not dollars.
      trigger** other workflows, so the adopter's CI/checks won't run automatically.
 2. **First-run trigger UX.** ✅ **RESOLVED 2026-05-24: commit-message-prefix
    trigger (remcc-style), no draft PR on first push.** You push a `change/<name>`
-   branch; a commit whose subject starts with `@specfly:apply` fires the run. The
+   branch; a commit whose subject starts with `@spec:apply` fires the run. The
    backend detects it on the **push** webhook (branch + prefix match) and
    `repository_dispatch`es into the repo — so the adopter workflow stays
    `on: repository_dispatch`, unchanged. The runner applies and pushes the result
@@ -271,7 +271,7 @@ scale is **maintainer time** (support, on-call) — not dollars.
    PR as `Specfly[bot]` — exactly once. This avoids the draft-PR chicken-and-egg a
    label needs (you can't label a not-yet-existing PR), keeps the flow in the
    terminal, and preserves the separate-actor PR (App opens it → approvable + CI
-   triggers). Trade-offs: the `@specfly:apply` prefix lives permanently in branch
+   triggers). Trade-offs: the `@spec:apply` prefix lives permanently in branch
    history; the trigger shows in `git log` rather than as a GitHub UI chip.
 3. **Prerequisite reduction.** ✅ **RESOLVED 2026-05-24: keep OpenSpec + pnpm/bun
    as hard prereqs for now; broaden later if it doesn't force a redesign (it

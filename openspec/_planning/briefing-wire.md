@@ -122,7 +122,7 @@ to add a callback.
 Confirm the **"Commit and push change branch"** step:
 - Pushes to `change/<name>` via `GITHUB_TOKEN` (keep `actions/checkout`'s default
   `persist-credentials: true`; do not set a custom token).
-- Commit subject is `opsx:apply <name>` — it MUST NOT start with `@specfly:apply`,
+- Commit subject is `opsx:apply <name>` — it MUST NOT start with `@spec:apply`,
   or it would re-trigger a dispatch loop. (It currently does not — keep it that way.)
 - Excludes the `apply.jsonl` audit log from the commit (it already does via
   `git reset -- apply.jsonl`).
@@ -158,11 +158,11 @@ Add a short comment making the handshake explicit, e.g.:
 
 ### Manual e2e test plan (document in a comment or PR description; maintainer runs later)
 1. In a test adopter repo with the App installed + backend deployed + `main`
-   protected: `git commit -m "@specfly:apply" && git push` on `change/<name>`.
+   protected: `git commit -m "@spec:apply" && git push` on `change/<name>`.
 2. Expect: backend `repository_dispatch` → this workflow runs → checks out
    `change/<name>` → `/opsx:apply` → pushes `opsx:apply <name>` commit.
 3. Expect: backend opens a PR as `Specfly[bot]`; adopter CI triggers on it.
-4. Confirm the dispatch did not loop (the runner's push has no `@specfly:apply`
+4. Confirm the dispatch did not loop (the runner's push has no `@spec:apply`
    prefix and is by `github-actions[bot]`).
 
 ---
@@ -175,7 +175,7 @@ Add a short comment making the handshake explicit, e.g.:
    `287375800+specfly[bot]@users.noreply.github.com` (the real App bot id, hardcoded —
    no placeholder); comments state it is cosmetic and does not change the webhook sender.
 4. Push step unchanged in substance: `GITHUB_TOKEN`, pushes `change/<name>`, subject
-   `opsx:apply <name>` (no `@specfly:apply` prefix), `apply.jsonl` excluded; handshake
+   `opsx:apply <name>` (no `@spec:apply` prefix), `apply.jsonl` excluded; handshake
    documented with a comment; no runner→backend callback added.
 5. Prerequisite/package-manager/OpenSpec logic untouched (§11.3 deferred).
 6. `actionlint` clean on both workflow files.
@@ -185,6 +185,6 @@ Add a short comment making the handshake explicit, e.g.:
 ## 6. Guardrails / must-nots (recap)
 - Don't relax prerequisites (§11.3 is unsettled).
 - Don't add a runner→backend callback — the backend is push-webhook-driven.
-- Don't make the result commit subject start with `@specfly:apply` (loop risk).
+- Don't make the result commit subject start with `@spec:apply` (loop risk).
 - Don't replace `GITHUB_TOKEN` with a PAT/App token for the push.
 - Don't deploy or register anything.
