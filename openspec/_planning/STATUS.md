@@ -1,6 +1,6 @@
 # Specfly — status & pickup
 
-_Last updated: 2026-05-25._
+_Last updated: 2026-05-26._
 
 Short "start here." Rationale in [HIGH-LEVEL-DESIGN.md](HIGH-LEVEL-DESIGN.md);
 per-task detail in the briefings.
@@ -87,7 +87,16 @@ per-task detail in the briefings.
 
 ## Pick up here (in order)
 
-1. **Branding and promotion** — add a logo, revise README.md, create a simple specfly.io
+1. **Migrate domain `specfly.io` → `specfly.dev`** — `specfly.dev` purchased 2026-05-25.
+   _Why:_ cut away from any `fly.io` association/confusion. Touches: the Worker custom-domain
+   route (`backend/wrangler.toml` `pattern = "api.specfly.io"`; live at `api.specfly.io/webhook`
+   → `api.specfly.dev/webhook`, plus Cloudflare DNS + TLS for the new zone), the **GitHub App
+   webhook URL** (Settings → specfly → Webhook URL), and the npm/domain/repo identity + docs
+   references to `specfly.io`. Cutover gotcha: keep `specfly.io` resolving during the transition
+   so the one installed adopter's webhooks don't drop until the App URL is repointed. The landing
+   page (below) should target `specfly.dev`.
+
+2. **Branding and promotion** — add a logo, revise README.md, create a simple `specfly.dev`
    landing page. (The adopter `foster-systems/foster-systems` is itself an Astro site — a
    natural reference for the landing page.)
 
