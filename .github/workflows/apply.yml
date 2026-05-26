@@ -70,6 +70,9 @@ jobs:
       contents: write # push the change branch; the main ruleset fences off main
     env:
       ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
+      # Corepack auto-provisions pnpm from package.json#packageManager on first
+      # use; in CI (non-interactive) skip the download confirmation prompt.
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
     steps:
       - name: Verify ANTHROPIC_API_KEY is set
         run: |
@@ -118,7 +121,7 @@ jobs:
 
       # Mirrors remcc's precedence: a declared package.json#packageManager is
       # authoritative; otherwise a lone bun lockfile -> bun; pnpm must declare a
-      # version (pnpm/action-setup has no default).
+      # version (Corepack provisions the exact pnpm from packageManager).
       - name: Resolve package manager
         id: pm
         run: |
@@ -146,8 +149,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - if: steps.pm.outputs.name == 'pnpm'
-        uses: pnpm/action-setup@v4
+      # Provision pnpm via Corepack (bundled with Node) instead of the
+      # pnpm/action-setup action. That action is a third-party download from
+      # codeload's git-archive CDN — a single-attempt, no-retry "Set up job" step
+      # that has flaked with intermittent 404s and stalls EVERY adopter apply
+      # before it starts. Corepack fetches the exact pnpm pinned in
+      # package.json#packageManager from the npm registry instead. Upgrading to
+      # corepack@latest first avoids the stale signing-key ("keyid") errors that
+      # Node's bundled corepack hits on recent pnpm releases.
+      - name: Enable pnpm via Corepack
+        if: steps.pm.outputs.name == 'pnpm'
+        run: |
+          npm install -g corepack@latest
+          corepack enable
       - if: steps.pm.outputs.name == 'bun'
         uses: oven-sh/setup-bun@v2
 
