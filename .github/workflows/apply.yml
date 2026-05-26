@@ -162,8 +162,19 @@ jobs:
         run: |
           npm install -g corepack@latest
           corepack enable
-      - if: steps.pm.outputs.name == 'bun'
-        uses: oven-sh/setup-bun@v2
+      # Install bun from its official script rather than oven-sh/setup-bun. As
+      # with pnpm/action-setup above, GitHub downloads EVERY referenced action at
+      # "Set up job" time regardless of the `if:` (all actions are fetched up
+      # front), so that third-party action's flaky codeload download stalls even
+      # pnpm-only adopters before any step runs. A run-step install from bun.sh
+      # keeps third-party action downloads off the critical path. Installs latest
+      # (parity with the action's prior no-version default); the lockfile pins the
+      # dependency set via --frozen-lockfile regardless.
+      - name: Install bun
+        if: steps.pm.outputs.name == 'bun'
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "${HOME}/.bun/bin" >> "$GITHUB_PATH"
 
       - name: Install Claude Code and OpenSpec CLIs
         run: npm install -g @anthropic-ai/claude-code @fission-ai/openspec@latest
