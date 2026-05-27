@@ -82,7 +82,7 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           # repository_dispatch runs this workflow AS DEFINED ON THE DEFAULT
@@ -146,9 +146,9 @@ jobs:
           echo "name=${name}" >> "$GITHUB_OUTPUT"
           echo "Resolved package manager: ${name}"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
       # Provision pnpm via Corepack (bundled with Node) instead of the
       # pnpm/action-setup action. That action is a third-party download from
       # codeload's git-archive CDN — a single-attempt, no-retry "Set up job" step
@@ -355,7 +355,7 @@ jobs:
 
       - name: Upload agent logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: specfly-apply-${{ steps.change.outputs.name || 'unresolved' }}
           path: |
