@@ -1,4 +1,6 @@
-# Specfly — status & pickup
+# Specfly — status & pickup (ARCHIVED 2026-05-27)
+
+_Superseded by `openspec/_planning/.roadmap.md`. Kept for the "Done" history below._
 
 _Last updated: 2026-05-26._
 
@@ -55,6 +57,23 @@ per-task detail in the briefings.
   (1) `PRIVATE_KEY` was PKCS#1 not PKCS#8 → re-stored as PKCS#8 (+ `createApp` fail-fast
   guard, see below); (2) the repo's `ANTHROPIC_API_KEY` was a stale remcc-era key →
   maintainer set a valid one.
+- **Second live adopter apply — PASSED** (2026-05-26) — `foster-systems/foster-systems`
+  change `fix-github-org-link` applied end-to-end → **App-authored PR #18 "Apply
+  fix-github-org-link"** by `app/specfly` (runner result commit `opsx:apply fix-github-org-link`
+  by `specfly[bot]`; D1 `dispatched` → `pr_opened`, no loop). Diagnosis chain worth remembering:
+  the initial "didn't trigger" was **not** the commit or backend — the backend verified, classified,
+  dispatched, and recorded the `dispatched` D1 row correctly (webhook returned `202`). The sole
+  cause was a **GitHub Actions auth incident** (2026-05-26, started 10:57 UTC: runs not starting,
+  action downloads blocked, git-fetch 403s — see githubstatus.com). Re-ran clean once GitHub
+  recovered. Gotcha: a `dispatched` D1 row dedups its exact sha, so a webhook *redelivery* won't
+  re-fire — retrigger with a **new** `@spec:apply` sha (or delete the row; TTL-swept in 7 days).
+- **Apply runner hardened — no third-party action downloads** (2026-05-26, on `main` + `v1`)
+  _(hotfix; no spec delta — the package-manager mechanism isn't specified in `apply-runner/`)_ —
+  GitHub fetches EVERY referenced action at "Set up job" regardless of `if:`, so a flaky `codeload`
+  download of `pnpm/action-setup` **or** `oven-sh/setup-bun` stalls setup for ALL adopters (even
+  pnpm-only repos — the bun action is fetched too). `apply.yml` now provisions pnpm via **Corepack**
+  (`corepack@latest && corepack enable`, reads `packageManager`) and bun via its official
+  `bun.sh/install` script; only first-party `actions/*` remain. `actionlint` clean.
 - **PKCS#8 private-key guard + docs** (2026-05-25, **merged — PR #4**) — `createApp`
   (`backend/src/github.ts`) fail-fasts on a PKCS#1 `PRIVATE_KEY` with the exact
   `openssl pkcs8 -topk8` remedy (instead of the cryptic `universal-github-app-jwt` error
@@ -71,10 +90,12 @@ per-task detail in the briefings.
   `401` on a bad signature, `202` on a real GitHub-signed redelivery. The live dispatch →
   App-authored PR path is now **exercised end-to-end** (see "First live end-to-end apply"
   above).
-- **`v1` tagged** (2026-05-25) — annotated `v1` → `f091035` (force-moved here after the
-  keyword rename below; `4547b1f` at first cut), so `uses: …/apply.yml@v1` carries the
-  `cancel-in-progress` concurrency guard and the `@spec:apply` error text. Future releases
-  move it: `git tag -f v1 <sha> && git push -f origin v1`.
+- **`v1` tag** — `v1` → `87689c6` (moved 2026-05-26 for the no-third-party-action hardening
+  above; earlier `f091035` after the keyword rename below, `4547b1f` at first cut), so
+  `uses: …/apply.yml@v1` carries the `cancel-in-progress` concurrency guard, the `@spec:apply`
+  error text, and the Corepack/bun-script setup. Future releases move it:
+  `git tag -f v1 <sha> && git push -f origin v1` — the **maintainer** runs the force-push
+  (agent is blocked by a `git push -f:*` deny rule).
 - **Trigger keyword renamed** `@specfly:apply` → `@spec:apply` (2026-05-25, PR #3) —
   shorter, reads better. Sole functional change is the backend `MARKER`
   (`backend/src/logic.ts`, matched via `startsWith`, case-sensitive); **redeployed**
@@ -109,7 +130,12 @@ per-task detail in the briefings.
      bullet in Done.
    - **Stale merged branches, safe to delete:** `harden-private-key-pkcs8` (specfly, PR #4),
      `setup/specfly-caller` (adopter, PR #16). `change/add-humans-txt` was auto-deleted on
-     the PR #17 merge. (The two `pr_opened` D1 rows self-reclaim via the daily TTL cron.)
+     the PR #17 merge. (The `pr_opened` D1 rows self-reclaim via the daily TTL cron.)
+   - **PR #18** (adopter `fix-github-org-link`) is **open** — review/merge to land the
+     GitHub-org-link fix. Its `change/fix-github-org-link` branch carries a couple of empty
+     `@spec:apply` re-trigger commits from the incident-recovery testing (harmless; squash on
+     merge). Local specfly branches `harden-apply-pnpm-corepack` + `harden-apply-bun-script`
+     are merged into `main` (never pushed) and can be deleted.
 
 ## Pointers
 

@@ -1,8 +1,5 @@
-# apply-dispatch Specification
+## ADDED Requirements
 
-## Purpose
-TBD - created by archiving change build-backend. Update Purpose after archive.
-## Requirements
 ### Requirement: Trigger command namespace
 
 The system SHALL recognize apply triggers under the `/spec:` command namespace. The
@@ -34,6 +31,8 @@ The legacy `@spec:apply` prefix SHALL NOT be recognized (it classifies as `ignor
 
 - **WHEN** the tip-commit first line starts with `@spec:apply`
 - **THEN** it is not a trigger and the push classifies as `ignore`
+
+## MODIFIED Requirements
 
 ### Requirement: Push classification
 
@@ -104,20 +103,6 @@ Absence of these tokens SHALL be valid.
 - **WHEN** the trigger first line is exactly `/spec:apply`
 - **THEN** parsing yields no `model` and no `effort`
 
-### Requirement: Repository dispatch on trigger
-
-On a trigger, the system SHALL mint an installation token and
-`POST /repos/{owner}/{repo}/dispatches` with `event_type` `specfly-apply` and a
-`client_payload` containing `change`, `branch` (`change/<name>`), `head_sha` (the
-trigger sha), and optional `model`/`effort`, keeping `client_payload` to at most 10
-top-level keys.
-
-#### Scenario: Dispatch fired with correct payload shape
-
-- **WHEN** a trigger for `change/foo` at sha `abc123` is processed
-- **THEN** the system fires `repository_dispatch` with `event_type` `specfly-apply`
-  and `client_payload` `{ change: "foo", branch: "change/foo", head_sha: "abc123", … }`
-
 ### Requirement: Run recording and idempotency
 
 On a successful dispatch the system SHALL `INSERT` a `runs` row with
@@ -139,4 +124,3 @@ and re-dispatch.
 
 - **WHEN** a developer pushes a second `/spec:apply` commit (new sha → new `trigger_key`) to the same branch
 - **THEN** a new `dispatched` run row is created and a fresh dispatch is fired
-

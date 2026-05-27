@@ -1,8 +1,5 @@
-# pr-authoring Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change build-backend. Update Purpose after archive.
-## Requirements
 ### Requirement: Result detection criteria
 
 The system SHALL treat a `push` as a runner result only when ALL hold: the ref is
@@ -21,36 +18,6 @@ or by `specfly[bot]`, SHALL NOT be a result.
 - **WHEN** a human pushes a non-`/spec:apply` commit to `change/<name>` while a run
   is `dispatched`
 - **THEN** the push is not treated as a result and no PR is opened
-
-### Requirement: Open App-authored PR on first apply
-
-On a result, the system SHALL **first atomically claim** the branch's `dispatched`
-run by transitioning it to `pr_opened` — a single
-`UPDATE … WHERE repo_branch_key=? AND status='dispatched'` that reports the number of
-rows changed — and SHALL proceed only if it claimed at least one run. A result that
-claims no run (another concurrent or redelivered result already claimed the branch)
-SHALL take no GitHub action. Having claimed, if no open PR exists for the head branch,
-the system SHALL mint an installation token and `POST /repos/{owner}/{repo}/pulls` with
-`head: "change/<name>"`, `base` the repository default branch, `draft: false`, and a
-descriptive title/body. Because the PR is created by the App, it triggers the adopter's
-CI and is approvable by a solo maintainer. No PR number is stored — an open PR is
-re-discovered via `findOpenPr` when needed. The claim is the single atomic step that
-closes the read→act window: of two near-simultaneous results, only one observes a
-non-zero rows-changed and acts.
-
-#### Scenario: First result claims the run and opens a PR
-
-- **WHEN** a result arrives, the atomic claim transitions the branch's `dispatched` run
-  to `pr_opened` (rows changed ≥ 1), and
-  `GET …/pulls?state=open&head={owner}:change/<name>` returns no open PR
-- **THEN** the system opens a PR with base = default branch, `draft: false`
-
-#### Scenario: A losing concurrent result no-ops
-
-- **WHEN** two `result` pushes for the same branch are handled near-simultaneously (or a
-  result is redelivered) and the atomic claim for the second reports zero rows changed
-- **THEN** the second result takes no GitHub action — it opens no second PR and pushes
-  no commit
 
 ### Requirement: CI-refresh empty commit on re-run
 
@@ -85,22 +52,3 @@ result cannot push a second refresh commit.
 - **WHEN** the App's empty CI-refresh commit's `push` webhook is later delivered
 - **THEN** its subject does not start with `/spec:apply` and its sender is
   `specfly[bot]`, so it classifies as `ignore` and cannot loop
-
-### Requirement: No-result runs remain dispatched
-
-The system SHALL leave a run row at `status="dispatched"` and open no PR when a
-dispatched run produces no result push (apply made no changes or failed). Such a row
-is no longer retained indefinitely: the `ephemeral-state` scheduled cleanup deletes it
-once it ages past the retention TTL. This known-state SHALL be documented in the
-backend README.
-
-#### Scenario: Apply with no changes leaves run dispatched
-
-- **WHEN** a dispatched apply produces no runner result push
-- **THEN** no PR is opened and the run row stays `status="dispatched"`
-
-#### Scenario: A stale dispatched run is reclaimed
-
-- **WHEN** a `dispatched` run with no result ages past the retention TTL
-- **THEN** the scheduled cleanup deletes the row
-

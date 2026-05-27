@@ -89,7 +89,7 @@ export async function handlePush(
   // redelivered result claims 0 rows and no-ops here — it cannot double-open a PR
   // or double-fire the CI-refresh commit. (If the claim succeeds but the GitHub
   // call below then throws, the row is left pr_opened with no PR; that orphan is
-  // recoverable via a fresh @spec:apply and is TTL-swept — see README.)
+  // recoverable via a fresh /spec:apply and is TTL-swept — see README.)
   const claimed = await markRunPrOpened(env.DB, branchDigest);
   if (claimed === 0) return; // another result already claimed this branch
 

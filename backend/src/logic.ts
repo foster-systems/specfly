@@ -5,7 +5,8 @@
 import type { ApplyArgs, PushClassification, PushPayload } from "./types";
 
 const REF_PREFIX = "refs/heads/change/";
-const MARKER = "@spec:apply";
+const NAMESPACE = "/spec:";
+const APPLY_COMMAND = "apply";
 const RUNNER = "github-actions[bot]";
 
 /** First line of a commit message (everything before the first newline). */
@@ -24,17 +25,35 @@ export function parseRef(
   return { branch: `change/${changeName}`, changeName };
 }
 
-/** True iff the (first) line, after trimming leading whitespace, starts with the
- *  `@spec:apply` marker (case-sensitive). */
-export function isTriggerCommit(line: string): boolean {
-  return firstLineOf(line).replace(/^\s+/, "").startsWith(MARKER);
+/** Extract the `/spec:<command>` verb from the (first) line: trims leading
+ *  whitespace, requires the `/spec:` namespace, and returns the first
+ *  whitespace-delimited token immediately after it — or null when the line is not
+ *  a `/spec:` command or no verb follows (bare `/spec:`, `/spec: apply`).
+ *  Matching is case-sensitive. */
+export function parseSpecCommand(line: string): string | null {
+  const head = firstLineOf(line).replace(/^\s+/, "");
+  if (!head.startsWith(NAMESPACE)) return null;
+  const verb = head.slice(NAMESPACE.length).split(/\s+/, 1)[0];
+  return verb.length > 0 ? verb : null;
 }
 
-/** Parse `key=value` tokens after the marker. Recognizes `model`/`effort`;
- *  ignores unknown keys and empty values. Absence is valid (returns `{}`). */
+/** True iff the (first) line is a `/spec:apply` command — the `/spec:` namespace
+ *  immediately followed by the `apply` verb as a whole token (case-sensitive). */
+export function isTriggerCommit(line: string): boolean {
+  return parseSpecCommand(line) === APPLY_COMMAND;
+}
+
+/** Parse `key=value` tokens after the `/spec:<command>` prefix. Recognizes
+ *  `model`/`effort`; ignores unknown keys and empty values. Absence is valid
+ *  (returns `{}`). */
 export function parseApplyArgs(line: string): ApplyArgs {
   const head = firstLineOf(line).replace(/^\s+/, "");
-  const rest = head.startsWith(MARKER) ? head.slice(MARKER.length) : head;
+  let rest = head;
+  if (head.startsWith(NAMESPACE)) {
+    const afterNs = head.slice(NAMESPACE.length);
+    const verb = afterNs.split(/\s+/, 1)[0];
+    rest = afterNs.slice(verb.length);
+  }
   const args: ApplyArgs = {};
   for (const token of rest.trim().split(/\s+/)) {
     const eq = token.indexOf("=");
@@ -51,7 +70,7 @@ export function parseApplyArgs(line: string): ApplyArgs {
 /**
  * Classify an inbound push using only the payload plus whether a `dispatched`
  * run already exists for the branch:
- *  - human + `@spec:apply` tip on `change/*`      → "trigger"
+ *  - human + `/spec:apply` tip on `change/*`      → "trigger"
  *  - `github-actions[bot]` + a dispatched run        → "result"
  *  - `specfly[bot]` CI-refresh / anything else        → "ignore"
  *
@@ -66,7 +85,7 @@ export function classifyPush(
   const sender = payload.sender?.login;
   const tip = payload.head_commit;
 
-  // Trigger: a human (never the runner) pushed an @spec:apply tip commit.
+  // Trigger: a human (never the runner) pushed a /spec:apply tip commit.
   if (sender !== RUNNER && tip && isTriggerCommit(tip.message)) {
     return "trigger";
   }
