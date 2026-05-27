@@ -205,30 +205,75 @@ jobs:
           EFFORT: ${{ inputs.effort }}
         run: |
           set -o pipefail
-          # Stream NDJSON to apply.jsonl (raw audit trail) and a human-readable
-          # distillation to the Actions console.
+          # Header records the model/effort this run used. Unlike remcc, Specfly
+          # receives model/effort as workflow inputs, so there's no "(source: …)"
+          # annotation — the values are recorded as-is.
+          {
+            printf 'model: %s\n' "${MODEL}"
+            printf 'effort: %s\n' "${EFFORT}"
+            printf -- '---\n'
+          } > apply.log
+          # Stream NDJSON to apply.jsonl (full raw audit trail) and a
+          # human-readable distillation to apply.log + the Actions console, so
+          # you can watch the agent work live. The jq tool_summary function is
+          # ported verbatim from remcc (templates/workflows/opsx-apply.yml):
+          # each tool line surfaces its key input rather than just the name.
           claude --dangerously-skip-permissions \
             --model "${MODEL}" \
             --effort "${EFFORT}" \
             --output-format stream-json --verbose \
             -p "/opsx:apply ${CHANGE_NAME}" 2>&1 \
-            | tee apply.jsonl \
+            | tee -a apply.jsonl \
             | jq --unbuffered -r '
-                if .type == "assistant" then
+                def tool_summary:
+                  . as $tu | ($tu.input // {}) as $i |
+                  if   $tu.name == "Bash"      then "→ Bash $ \(($i.command // "?") | gsub("\n"; " ↵ "))"
+                  elif $tu.name == "Read"      then "→ Read \($i.file_path // "?")"
+                  elif $tu.name == "Edit"      then "→ Edit \($i.file_path // "?")"
+                  elif $tu.name == "MultiEdit" then "→ MultiEdit \($i.file_path // "?") (\(($i.edits // []) | length) edits)"
+                  elif $tu.name == "Write"     then "→ Write \($i.file_path // "?")"
+                  elif $tu.name == "Grep"      then "→ Grep \"\($i.pattern // "?")\"\(if $i.path then " in \($i.path)" else "" end)"
+                  elif $tu.name == "Glob"      then "→ Glob \($i.pattern // "?")"
+                  elif $tu.name == "WebFetch"  then "→ WebFetch \($i.url // "?")"
+                  elif $tu.name == "WebSearch" then "→ WebSearch \"\($i.query // "?")\""
+                  elif $tu.name == "Task"      then "→ Task[\($i.subagent_type // "general")] \($i.description // "?")"
+                  elif $tu.name == "TodoWrite" then "→ TodoWrite (\(($i.todos // []) | length) items)"
+                  else "→ \($tu.name) \(($i | tostring)[0:200])" end;
+                if .type == "system" and .subtype == "init" then
+                  "[init] model=\(.model // "?") cwd=\(.cwd // "?")"
+                elif .type == "assistant" then
                   (.message.content // []) | map(
                     if .type == "text" then .text
-                    elif .type == "tool_use" then "→ \(.name)"
-                    else empty end) | join("\n")
-                elif .type == "result" then "[done] \(.subtype // "?") cost_usd=\(.total_cost_usd // 0)"
-                else empty end'
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+                    elif .type == "tool_use" then tool_summary
+                    else empty end
+                  ) | join("\n")
+                elif .type == "result" then
+                  "[done] subtype=\(.subtype // "?") cost_usd=\(.total_cost_usd // .cost_usd // 0)"
+                else empty end
+              ' \
+            | tee -a apply.log
+          # PIPESTATUS[0] is the agent's real exit code. Exit with it (under
+          # continue-on-error) so the STEP reflects the true outcome — red-but-
+          # continued on agent failure — while the job stays green and the
+          # branch still pushes. The report below still reads exit_code.
+          status="${PIPESTATUS[0]}"
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          exit "${status}"
 
       - name: Validate change
         id: validate
         continue-on-error: true
         env:
           CHANGE_NAME: ${{ steps.change.outputs.name }}
-        run: openspec validate "${CHANGE_NAME}"
+        run: |
+          set -o pipefail
+          # tee combined output to validate.log so a failing validation is
+          # visible live and preserved as an artifact (it ran silently before).
+          # continue-on-error keeps steps.validate.outcome driving the report
+          # without failing the job; exiting PIPESTATUS[0] makes that outcome
+          # reflect the real validate result.
+          openspec validate "${CHANGE_NAME}" 2>&1 | tee validate.log
+          exit "${PIPESTATUS[0]}"
 
       - name: Commit and push change branch
         env:
@@ -237,14 +282,17 @@ jobs:
         run: |
           set -euo pipefail
           git add -A
-          git reset -- apply.jsonl 2>/dev/null || true
+          # Runner-local logs are uploaded as the agent-logs artifact; keep all
+          # three (apply.jsonl, apply.log, validate.log) out of the result commit.
+          git reset -- apply.jsonl apply.log validate.log 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
             # Subject MUST stay "opsx:apply <name>" — it must NOT start with
             # @spec:apply, which the backend would classify as a new trigger
-            # and re-dispatch, looping. apply.jsonl is excluded above so the audit
-            # log never lands in the result commit.
+            # and re-dispatch, looping. The runner-local logs (apply.jsonl,
+            # apply.log, validate.log) are excluded above so they never land in
+            # the result commit.
             git commit -m "opsx:apply ${CHANGE_NAME}"
             # Pushed via the job's GITHUB_TOKEN (actions/checkout's default
             # persist-credentials: true; no custom push token). Deliberately NO
@@ -310,6 +358,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: specfly-apply-${{ steps.change.outputs.name || 'unresolved' }}
-          path: apply.jsonl
+          path: |
+            apply.jsonl
+            apply.log
+            validate.log
           if-no-files-found: ignore
           retention-days: 14
