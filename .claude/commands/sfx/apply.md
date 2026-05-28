@@ -1,27 +1,27 @@
 ---
-name: "SPEC: Apply"
-description: Trigger a REMOTE Specfly apply — craft the /spec:apply trigger commit on change/<name> and push it (distinct from /opsx:apply, which implements tasks locally)
+name: "SFX: Apply"
+description: Trigger a REMOTE Specfly apply — craft the /sfx:apply trigger commit on change/<name> and push it (distinct from /opsx:apply, which implements tasks locally)
 category: Workflow
 tags: [workflow, specfly, remote, trigger]
 ---
 
 Trigger a **remote** Specfly apply run for an OpenSpec change.
 
-> **This triggers the REMOTE apply.** It crafts the `/spec:apply` trigger commit
+> **This triggers the REMOTE apply.** It crafts the `/sfx:apply` trigger commit
 > and pushes it so the Specfly backend dispatches the apply onto your GitHub
 > Actions runner. It is **distinct from `/opsx:apply`**, which implements a
-> change's tasks **locally** on this machine. Use `/spec:apply` when you want the
+> change's tasks **locally** on this machine. Use `/sfx:apply` when you want the
 > GitHub worker to do the apply and open a PR; use `/opsx:apply` to implement
 > locally.
 
-**Usage**: `/spec:apply [<name>] [model=<m>] [effort=<e>]`
+**Usage**: `/sfx:apply [<name>] [model=<m>] [effort=<e>]`
 
 - `<name>` — the OpenSpec change to apply. Optional; resolved automatically (see below).
 - `model=<m>` — optional Claude model for the remote run (e.g. `model=opus`).
 - `effort=<e>` — optional thinking effort for the remote run (e.g. `effort=high`).
 
 This command is a thin shim over `git`: the trigger contract is pure git
-(`change/<name>` branch + a `/spec:apply` first-line tip commit + a push), so it
+(`change/<name>` branch + a `/sfx:apply` first-line tip commit + a push), so it
 carries no backend-specific logic.
 
 **Steps**
@@ -36,7 +36,7 @@ carries no backend-specific logic.
      them and use the **AskUserQuestion tool** to let the user pick.
 
    Always announce: `Using change: <name>` and how to override (e.g.
-   `/spec:apply <other>`).
+   `/sfx:apply <other>`).
 
 2. **Preflight (fail fast — do NOT commit or push if any check fails)**
 
@@ -81,18 +81,18 @@ carries no backend-specific logic.
 4. **Craft the commits**
 
    - First, if there are pending edits under `openspec/changes/<name>/`, stage and
-     commit them under a subject that does NOT begin with `/spec:apply` — e.g.
+     commit them under a subject that does NOT begin with `/sfx:apply` — e.g.
      `git add openspec/changes/<name>` then `git commit -m "docs(<name>): proposal"`.
-     The subject must not start with `/spec:apply` or it would itself be a trigger.
+     The subject must not start with `/sfx:apply` or it would itself be a trigger.
    - Then craft the trigger commit:
 
      ```bash
-     git commit --allow-empty -m "/spec:apply <name>"
+     git commit --allow-empty -m "/sfx:apply <name>"
      ```
 
      Append ` model=<m>` and/or ` effort=<e>` to the subject **only** when those
-     arguments were supplied — e.g. `/spec:apply <name> model=opus effort=high`.
-     The first line must start with `/spec:` immediately followed by the verb
+     arguments were supplied — e.g. `/sfx:apply <name> model=opus effort=high`.
+     The first line must start with `/sfx:` immediately followed by the verb
      `apply` (case-sensitive); only `model` and `effort` `key=value` tokens are
      recognized — anything else is ignored by the backend.
 
@@ -119,7 +119,7 @@ carries no backend-specific logic.
      updates) the PR once apply completes.
    - Where to watch: the repo's **Actions** tab for the apply run, and the PR
      authored by **`specfly[bot]`**.
-   - Re-running is simply `/spec:apply` again (each run pushes a fresh-sha empty
+   - Re-running is simply `/sfx:apply` again (each run pushes a fresh-sha empty
      trigger and re-dispatches; an existing PR updates in place).
    - Prerequisites to check **if nothing happens** (this command cannot verify
      them): the Specfly App is installed on the repo; the `ANTHROPIC_API_KEY`
@@ -129,17 +129,17 @@ carries no backend-specific logic.
 **Output On Success**
 
 ```
-Using change: <name>  (override: /spec:apply <other>)
+Using change: <name>  (override: /sfx:apply <other>)
 
 ✓ Committed change-dir edits: docs(<name>): proposal
-✓ Trigger pushed: /spec:apply <name>  →  change/<name>
+✓ Trigger pushed: /sfx:apply <name>  →  change/<name>
 
 What happens next:
   push webhook → repository_dispatch (specfly-apply) → runner runs /opsx:apply
   → Specfly[bot] opens/updates the PR.
 
 Watch: the repo's Actions tab; the PR authored by specfly[bot].
-Re-run anytime with: /spec:apply <name>
+Re-run anytime with: /sfx:apply <name>
 
 If nothing happens, check: Specfly App installed · ANTHROPIC_API_KEY secret set
 · specfly.yml present on the default branch.
@@ -153,7 +153,7 @@ If nothing happens, check: Specfly App installed · ANTHROPIC_API_KEY secret set
   (or on a mismatched `change/<other>`) — confirm first.
 - Always use `--allow-empty` for the trigger commit so re-runs get a fresh sha.
 - Never `--force`-push; a diverged remote tip fails closed.
-- The trigger subject's first line must be `/spec:apply <name>` (case-sensitive),
+- The trigger subject's first line must be `/sfx:apply <name>` (case-sensitive),
   with only `model=`/`effort=` tokens appended when supplied.
-- This recipe is agent-agnostic: `change/<name>` branch + `/spec:apply` first-line
+- This recipe is agent-agnostic: `change/<name>` branch + `/sfx:apply` first-line
   tip commit + push is the whole contract; any future agent can mirror it.

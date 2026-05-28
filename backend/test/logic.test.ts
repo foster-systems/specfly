@@ -37,38 +37,38 @@ describe("parseRef", () => {
 });
 
 describe("isTriggerCommit", () => {
-  it("matches the /spec:apply command at the start", () => {
-    expect(isTriggerCommit("/spec:apply")).toBe(true);
-    expect(isTriggerCommit("/spec:apply model=opus")).toBe(true);
+  it("matches the /sfx:apply command at the start", () => {
+    expect(isTriggerCommit("/sfx:apply")).toBe(true);
+    expect(isTriggerCommit("/sfx:apply model=opus")).toBe(true);
   });
 
   it("trims leading whitespace", () => {
-    expect(isTriggerCommit("   /spec:apply")).toBe(true);
+    expect(isTriggerCommit("   /sfx:apply")).toBe(true);
   });
 
   it("only considers the first line", () => {
-    expect(isTriggerCommit("/spec:apply\nbody text")).toBe(true);
-    expect(isTriggerCommit("fix something\n/spec:apply")).toBe(false);
+    expect(isTriggerCommit("/sfx:apply\nbody text")).toBe(true);
+    expect(isTriggerCommit("fix something\n/sfx:apply")).toBe(false);
   });
 
   it("is case-sensitive", () => {
-    expect(isTriggerCommit("/SPEC:apply")).toBe(false);
-    expect(isTriggerCommit("/spec:Apply")).toBe(false);
+    expect(isTriggerCommit("/SFX:apply")).toBe(false);
+    expect(isTriggerCommit("/sfx:Apply")).toBe(false);
   });
 
   it("matches the verb as a whole token", () => {
-    expect(isTriggerCommit("/spec:applyx")).toBe(false);
-    expect(isTriggerCommit("/spec:foo")).toBe(false);
+    expect(isTriggerCommit("/sfx:applyx")).toBe(false);
+    expect(isTriggerCommit("/sfx:foo")).toBe(false);
   });
 
   it("rejects the bare namespace", () => {
-    expect(isTriggerCommit("/spec:")).toBe(false);
-    expect(isTriggerCommit("/spec: apply")).toBe(false);
+    expect(isTriggerCommit("/sfx:")).toBe(false);
+    expect(isTriggerCommit("/sfx: apply")).toBe(false);
   });
 
-  it("rejects the legacy @spec:apply prefix", () => {
-    expect(isTriggerCommit("@spec:apply")).toBe(false);
-    expect(isTriggerCommit("@spec:apply model=opus")).toBe(false);
+  it("rejects the legacy /spec:apply prefix", () => {
+    expect(isTriggerCommit("/spec:apply")).toBe(false);
+    expect(isTriggerCommit("/spec:apply model=opus")).toBe(false);
   });
 
   it("rejects the runner's result subject", () => {
@@ -79,21 +79,21 @@ describe("isTriggerCommit", () => {
 
 describe("parseApplyArgs", () => {
   it("parses known keys and ignores unknown", () => {
-    expect(parseApplyArgs("/spec:apply model=opus effort=high foo=bar")).toEqual(
+    expect(parseApplyArgs("/sfx:apply model=opus effort=high foo=bar")).toEqual(
       { model: "opus", effort: "high" },
     );
   });
 
   it("yields empty options when no args are present", () => {
-    expect(parseApplyArgs("/spec:apply")).toEqual({});
+    expect(parseApplyArgs("/sfx:apply")).toEqual({});
   });
 
   it("parses a single key", () => {
-    expect(parseApplyArgs("/spec:apply effort=low")).toEqual({ effort: "low" });
+    expect(parseApplyArgs("/sfx:apply effort=low")).toEqual({ effort: "low" });
   });
 
   it("ignores empty values", () => {
-    expect(parseApplyArgs("/spec:apply model=")).toEqual({});
+    expect(parseApplyArgs("/sfx:apply model=")).toEqual({});
   });
 });
 
@@ -114,18 +114,18 @@ function pushPayload(over: {
     installation: { id: 42 },
     sender: { login: over.sender ?? "alice" },
     head_commit:
-      subject === null ? null : { id: "abc123", message: subject ?? "/spec:apply" },
+      subject === null ? null : { id: "abc123", message: subject ?? "/sfx:apply" },
   };
 }
 
 describe("classifyPush", () => {
-  it("classifies a human /spec:apply push as trigger", () => {
-    const p = pushPayload({ sender: "alice", subject: "/spec:apply" });
+  it("classifies a human /sfx:apply push as trigger", () => {
+    const p = pushPayload({ sender: "alice", subject: "/sfx:apply" });
     expect(classifyPush(p, false)).toBe("trigger");
   });
 
   it("is a trigger regardless of an existing dispatched run (idempotency is in the handler)", () => {
-    const p = pushPayload({ sender: "alice", subject: "/spec:apply model=opus" });
+    const p = pushPayload({ sender: "alice", subject: "/sfx:apply model=opus" });
     expect(classifyPush(p, true)).toBe("trigger");
   });
 
@@ -150,7 +150,7 @@ describe("classifyPush", () => {
   });
 
   it("ignores pushes to non-change branches", () => {
-    const p = pushPayload({ ref: "refs/heads/main", subject: "/spec:apply" });
+    const p = pushPayload({ ref: "refs/heads/main", subject: "/sfx:apply" });
     expect(classifyPush(p, false)).toBe("ignore");
   });
 

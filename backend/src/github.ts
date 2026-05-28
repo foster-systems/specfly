@@ -111,7 +111,7 @@ export async function openPullRequest(
 /**
  * Push one empty same-tree commit as the App to re-fire the adopter's CI on a
  * re-run (§11.5). Fast-forward only (no force). The `chore: re-run CI` subject
- * never starts with `/spec:apply`, and it lands as `specfly[bot]`, so its push
+ * never starts with `/sfx:apply`, and it lands as `specfly[bot]`, so its push
  * webhook classifies as `ignore` and cannot loop.
  */
 export async function pushEmptyCommit(

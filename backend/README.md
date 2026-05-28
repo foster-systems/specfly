@@ -1,7 +1,7 @@
 # Specfly backend
 
 The Specfly **control plane**: a single Cloudflare Worker that turns an adopter's
-`/spec:apply` commit into a runner dispatch, then turns the runner's result into
+`/sfx:apply` commit into a runner dispatch, then turns the runner's result into
 a pull request authored by the `specfly[bot]` GitHub App. This is the whole reason
 the App identity exists — an App-authored PR (or App push) is a distinct actor a
 solo maintainer can approve **and** that re-fires the adopter's CI, neither of which
@@ -25,7 +25,7 @@ repo/account/branch/change name), swept past a short TTL. See
 
 On a `push` webhook the backend classifies the event (`src/logic.ts`):
 
-- **trigger** — a human pushes a commit whose subject starts with `/spec:apply`
+- **trigger** — a human pushes a commit whose subject starts with `/sfx:apply`
   to `change/<name>` → mint an installation token → fire a `repository_dispatch`
   (`event_type: specfly-apply`) → record a `dispatched` run.
 - **result** — `github-actions[bot]` pushes back to `change/<name>` while a
@@ -102,7 +102,7 @@ passes it explicitly. On a trigger the backend fires:
   "client_payload": {
     "change":   "<name>",          // OpenSpec change name
     "branch":   "change/<name>",   // branch the runner must check out
-    "head_sha": "<trigger_sha>",   // the /spec:apply commit
+    "head_sha": "<trigger_sha>",   // the /sfx:apply commit
     "model":    "<optional>",      // from `model=` on the trigger subject
     "effort":   "<optional>"       // from `effort=` on the trigger subject
   }
@@ -113,7 +113,7 @@ passes it explicitly. On a trigger the backend fires:
 thin caller workflow is `on: repository_dispatch` `types: [specfly-apply]` and maps
 these fields onto the reusable `apply.yml` `workflow_call` inputs (`change`, `model`,
 `effort`), checking out `client_payload.branch`. The runner pushes its result with
-the subject `opsx:apply <name>` (no `/spec:apply` prefix) so it can never
+the subject `opsx:apply <name>` (no `/sfx:apply` prefix) so it can never
 re-trigger a dispatch.
 
 ## Ephemeral, non-attributable state
@@ -154,7 +154,7 @@ is self-reclaiming.
 
 ## Supersede & the atomic result claim
 
-Two `/spec:apply` commits pushed to the same `change/<name>` branch in quick
+Two `/sfx:apply` commits pushed to the same `change/<name>` branch in quick
 succession each re-dispatch a fresh apply (by design — a new trigger sha re-dispatches).
 Two layers keep this from racing:
 
@@ -177,7 +177,7 @@ Two layers keep this from racing:
 **Claim-then-action-failure orphan.** If the claim wins but the subsequent GitHub call
 (open-PR / refresh) then throws (e.g. a GitHub 5xx), the row is left `pr_opened` with no
 PR. A redelivery finds no `dispatched` run and no-ops, so it is not re-opened
-automatically — but it is **recoverable**: a fresh `/spec:apply` (new sha) mints a new
+automatically — but it is **recoverable**: a fresh `/sfx:apply` (new sha) mints a new
 dispatched run and re-opens, and the TTL sweep reclaims the orphan row. This is strictly
 better than the prior act-then-mark ordering, whose mark-failure path could *double*-fire
 the CI-refresh.
