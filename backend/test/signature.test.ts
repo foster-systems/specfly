@@ -38,7 +38,7 @@ function webhookRequest(body: string, signature: string | null): Request {
     "x-github-delivery": "test-delivery",
   };
   if (signature !== null) headers["x-hub-signature-256"] = signature;
-  return new Request("https://api.specfly.io/webhook", {
+  return new Request("https://api.specfly.dev/webhook", {
     method: "POST",
     headers,
     body,

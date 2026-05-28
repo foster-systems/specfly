@@ -90,7 +90,7 @@ Actions. The backend only routes events and authors the PR.
   the PR when the branch is pushed.
 - Recommended stack: **Cloudflare Workers + D1 (SQLite) + Workers Secrets**.
   Always-warm (no cold-start webhook misses), global, free tier covers a long
-  runway. Backend host: `api.specfly.io`.
+  runway. Backend host: `api.specfly.dev`.
 - Stores only metadata (installations, run history). **No source code, no logs of
   substance** — run logs stay in the adopter's Actions artifacts.
 
@@ -222,7 +222,7 @@ Backend cost scales with **webhook volume** (tiny per user), not with **compute*
 | 10,000 users (heavy)  | ~$5–15 compute + ~$20 DB |
 | 100,000 users (heavy) | ~$50–150 total           |
 
-Only guaranteed fixed cost: the `specfly.io` domain (~$12/yr). The real cost at
+Only guaranteed fixed cost: the `specfly.dev` domain (~$12/yr). The real cost at
 scale is **maintainer time** (support, on-call) — not dollars.
 
 ## 10. Comparison to remcc (v1)
@@ -316,6 +316,6 @@ Availability-checked 2026-05-21:
 
 Canonical identity: repo **`foster-systems/specfly`** (a public repo under the
 existing **Foster Systems** org — no dedicated org needed), npm `specfly`, domain
-`specfly.io`, App `github.com/apps/specfly` (App slugs are global, independent of
+`specfly.dev`, App `github.com/apps/specfly` (App slugs are global, independent of
 the owning org). `.com` is taken — acceptable, `.io` is conventional for dev
 tools. The standalone `specfly` GitHub org was checked-available but is not used.
