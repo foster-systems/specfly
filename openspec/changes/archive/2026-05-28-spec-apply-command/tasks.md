@@ -17,4 +17,3 @@
 ## 3. Verify
 
 - [x] 3.1 `openspec validate spec-apply-command` passes.
-- [ ] 3.2 Dogfood in this repo: run `/spec:apply <name>` on a throwaway `change/<name>` and confirm it crafts the `/spec:apply` tip commit and pushes (subject + branch correct); a second run produces a fresh-sha empty commit.
