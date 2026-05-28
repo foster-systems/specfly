@@ -1,9 +1,4 @@
-# Copy this into your repo as .github/workflows/specfly.yml
-#
-# This is the entire footprint Specfly asks of an adopter: this file plus an
-# ANTHROPIC_API_KEY secret and the installed Specfly App. The trigger is
-# repository_dispatch fired BY the Specfly backend (never locally) — that routing
-# is what keeps every run going through Specfly.
+# Copy this into your repo as .github/workflows/specfly.yml.
 
 name: Specfly Apply
 
@@ -12,19 +7,13 @@ on:
     types: [specfly-apply]
 
 permissions:
-  contents: write # push the change branch; the main ruleset fences off main
+  contents: write
 
 jobs:
   apply:
-    # Superseding/concurrency is handled by the reusable workflow (@v1): rapid
-    # same-branch /spec:apply triggers coalesce to one effective apply, latest
-    # wins. You inherit this for free — no concurrency: needed in this caller.
     uses: foster-systems/specfly/.github/workflows/apply.yml@v1
     with:
       change: ${{ github.event.client_payload.change }}
-      # Pass the dispatched trigger sha so the apply runs against the exact tree
-      # the backend saw (determinism under concurrent pushes). Omitting it is a
-      # safe fallback — the reusable workflow then checks out the branch tip.
       head_sha: ${{ github.event.client_payload.head_sha }}
       model: ${{ github.event.client_payload.model || 'sonnet' }}
       effort: ${{ github.event.client_payload.effort || 'high' }}

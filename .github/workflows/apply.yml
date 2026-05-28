@@ -1,28 +1,3 @@
-# Specfly — reusable apply workflow (workflow_call)
-#
-# STATUS: dispatch → apply → push handshake is wired, and hardened — the checkout
-# prefers the dispatched head_sha (deterministic under concurrent pushes, with a
-# fail-closed non-force push), and apply/validate outcomes are reported to the job
-# summary and as annotations. The Claude Code invocation is settled (see DESIGN.md).
-#
-# Adopters don't edit this — they reference it from a thin caller workflow
-# triggered by repository_dispatch from the Specfly backend. See
-# examples/adopter-workflow.yml.
-#
-# Division of labour: the runner CODES and PUSHES the change branch (using the
-# job's built-in GITHUB_TOKEN, contents:write). The Specfly App/backend opens the
-# PR as Specfly[bot] — a separate actor, so you can approve it and CI triggers.
-#
-# Manual end-to-end test (gated on the App + backend existing; run once they do).
-# In a test adopter repo with the App installed, the backend deployed, and a
-# protected main:
-#   1. Push a commit whose subject starts with "/spec:apply <name>".
-#   2. Backend fires repository_dispatch (type specfly-apply) → this workflow runs.
-#   3. Confirm Checkout lands on change/<name> (NOT the default branch).
-#   4. /opsx:apply runs and pushes a commit with subject "opsx:apply <name>".
-#   5. Backend's push webhook opens/updates the PR as Specfly[bot].
-#   6. Confirm NO dispatch loop (the result subject is not /spec:apply).
-
 name: Specfly Apply
 
 on:
@@ -53,26 +28,15 @@ on:
 
 jobs:
   apply:
-    # Latest apply wins. Each /spec:apply commit re-dispatches a fresh caller
-    # run; this job-level group coalesces all of them per change so a newer
-    # trigger cancels the in-flight apply BEFORE its "Commit and push" step — the
-    # stale run never clobbers the branch. The guard lives here (the reusable
-    # workflow) so every @v1 adopter inherits it without editing their caller.
-    # Keyed on inputs.change (passed by the caller from client_payload.change),
-    # which is reliably available in the called-workflow context — unlike
-    # github.event.client_payload.*, whose resolution here is not guaranteed.
     concurrency:
       group: specfly-apply-${{ inputs.change }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
-      contents: write # push the change branch; the main ruleset fences off main
+      contents: write
     env:
       ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
-      # Corepack auto-provisions pnpm from package.json#packageManager on first
-      # use; in CI (non-interactive) skip the download confirmation prompt.
-      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
     steps:
       - name: Verify ANTHROPIC_API_KEY is set
         run: |
@@ -85,18 +49,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          # repository_dispatch runs this workflow AS DEFINED ON THE DEFAULT
-          # BRANCH, so github.ref/github.ref_name point at the default branch —
-          # NOT change/<name>. Resolve the ref by preference (Actions evaluates
-          # `A && B || C` as a ternary, nested here):
-          #   1. inputs.head_sha — the dispatched trigger sha; checked out as a
-          #      DETACHED HEAD so /opsx:apply runs against the exact tree the
-          #      backend saw (deterministic under concurrent pushes to the branch).
-          #   2. else refs/heads/change/<name> — the branch tip, where
-          #      openspec/changes/<name>/ exists (older callers that don't pass
-          #      head_sha land here; backward-compatible).
-          #   3. else github.ref — a direct change/* push that passes no input.
-          # fetch-depth: 0 is kept so the bare head_sha is fetchable.
+          # Dispatch runs the default-branch definition, so resolve the ref: head_sha (detached), else the change/<name> tip, else github.ref.
           ref: ${{ inputs.head_sha != '' && inputs.head_sha || (inputs.change != '' && format('refs/heads/change/{0}', inputs.change) || github.ref) }}
 
       - name: Resolve change name
@@ -119,80 +72,16 @@ jobs:
           fi
           echo "name=${name}" >> "$GITHUB_OUTPUT"
 
-      # Mirrors remcc's precedence: a declared package.json#packageManager is
-      # authoritative; otherwise a lone bun lockfile -> bun; pnpm must declare a
-      # version (Corepack provisions the exact pnpm from packageManager).
-      - name: Resolve package manager
-        id: pm
-        run: |
-          set -euo pipefail
-          if [ ! -f package.json ]; then
-            echo "::error::package.json not found at repo root (Specfly supports pnpm- or bun-managed repos only)." >&2
-            exit 1
-          fi
-          pm="$(jq -r '.packageManager // empty' package.json)"
-          case "${pm}" in
-            pnpm@*) name=pnpm ;;
-            bun@*)  name=bun ;;
-            "")
-              if [ -f bun.lock ] || [ -f bun.lockb ]; then
-                name=bun
-              else
-                echo "::error::Set package.json#packageManager to 'pnpm@<version>' or 'bun@<version>'." >&2
-                exit 1
-              fi ;;
-            *) echo "::error::Unsupported packageManager '${pm}' (must start with 'pnpm@' or 'bun@')." >&2; exit 1 ;;
-          esac
-          echo "name=${name}" >> "$GITHUB_OUTPUT"
-          echo "Resolved package manager: ${name}"
-
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
-      # Provision pnpm via Corepack (bundled with Node) instead of the
-      # pnpm/action-setup action. That action is a third-party download from
-      # codeload's git-archive CDN — a single-attempt, no-retry "Set up job" step
-      # that has flaked with intermittent 404s and stalls EVERY adopter apply
-      # before it starts. Corepack fetches the exact pnpm pinned in
-      # package.json#packageManager from the npm registry instead. Upgrading to
-      # corepack@latest first avoids the stale signing-key ("keyid") errors that
-      # Node's bundled corepack hits on recent pnpm releases.
-      - name: Enable pnpm via Corepack
-        if: steps.pm.outputs.name == 'pnpm'
-        run: |
-          npm install -g corepack@latest
-          corepack enable
-      # Install bun from its official script rather than oven-sh/setup-bun. As
-      # with pnpm/action-setup above, GitHub downloads EVERY referenced action at
-      # "Set up job" time regardless of the `if:` (all actions are fetched up
-      # front), so that third-party action's flaky codeload download stalls even
-      # pnpm-only adopters before any step runs. A run-step install from bun.sh
-      # keeps third-party action downloads off the critical path. Installs latest
-      # (parity with the action's prior no-version default); the lockfile pins the
-      # dependency set via --frozen-lockfile regardless.
-      - name: Install bun
-        if: steps.pm.outputs.name == 'bun'
-        run: |
-          curl -fsSL https://bun.sh/install | bash
-          echo "${HOME}/.bun/bin" >> "$GITHUB_PATH"
 
       - name: Install Claude Code and OpenSpec CLIs
         run: npm install -g @anthropic-ai/claude-code @fission-ai/openspec@latest
 
-      - name: Install workspace dependencies
-        run: ${{ steps.pm.outputs.name }} install --frozen-lockfile
-
       - name: Configure git identity
         run: |
-          # COSMETIC commit attribution ONLY. 287375800 is the registered Specfly
-          # App's real, fixed bot user id (hardcoded, no placeholder). This sets
-          # the commit author/committer and nothing else. It deliberately does NOT:
-          #   - make commits GPG-"Verified" (only API-authored commits are), and
-          #   - change the webhook `sender` of the result push. That push is
-          #     authenticated by GITHUB_TOKEN, so the backend ALWAYS sees it as
-          #     sender == github-actions[bot] — which is exactly what its
-          #     result-detection keys on. Do NOT "fix" this with a PAT/App token to
-          #     change the sender or chase a "Verified" badge.
+          # 287375800 is the Specfly App's real bot user id; cosmetic attribution only (no Verified badge; push sender stays github-actions[bot]).
           git config user.name "specfly[bot]"
           git config user.email "287375800+specfly[bot]@users.noreply.github.com"
 
@@ -205,24 +94,24 @@ jobs:
           EFFORT: ${{ inputs.effort }}
         run: |
           set -o pipefail
-          # Header records the model/effort this run used. Unlike remcc, Specfly
-          # receives model/effort as workflow inputs, so there's no "(source: …)"
-          # annotation — the values are recorded as-is.
           {
             printf 'model: %s\n' "${MODEL}"
             printf 'effort: %s\n' "${EFFORT}"
             printf -- '---\n'
           } > apply.log
-          # Stream NDJSON to apply.jsonl (full raw audit trail) and a
-          # human-readable distillation to apply.log + the Actions console, so
-          # you can watch the agent work live. The jq tool_summary function is
-          # ported verbatim from remcc (templates/workflows/opsx-apply.yml):
-          # each tool line surfaces its key input rather than just the name.
+          PROMPT="$(cat <<EOF
+          Provision this project's environment before applying — do it in a sub-agent (the Task tool) so its install output stays out of your main context.
+          Tell the sub-agent to: read the repo's native CLAUDE.md / AGENTS.md (and any files they reference) for setup guidance; install the toolchain and dependencies the project needs; and report back a short summary with the STATELESS command(s) to run its tests/build (for example 'uv run pytest', '.venv/bin/pytest', or 'pnpm test'). Shell state — activated venvs, exported variables, PATH edits — does NOT persist across your Bash calls, so rely on stateless invocations like those.
+          Setup is best-effort and fail-open: if the environment cannot be fully provisioned, proceed anyway and apply what you can, so the branch is still pushed for human review.
+          Then run: /opsx:apply ${CHANGE_NAME}
+          Finally, verify your work best-effort using the run recipe the sub-agent reported.
+          EOF
+          )"
           claude --dangerously-skip-permissions \
             --model "${MODEL}" \
             --effort "${EFFORT}" \
             --output-format stream-json --verbose \
-            -p "/opsx:apply ${CHANGE_NAME}" 2>&1 \
+            -p "${PROMPT}" 2>&1 \
             | tee -a apply.jsonl \
             | jq --unbuffered -r '
                 def tool_summary:
@@ -252,10 +141,6 @@ jobs:
                 else empty end
               ' \
             | tee -a apply.log
-          # PIPESTATUS[0] is the agent's real exit code. Exit with it (under
-          # continue-on-error) so the STEP reflects the true outcome — red-but-
-          # continued on agent failure — while the job stays green and the
-          # branch still pushes. The report below still reads exit_code.
           status="${PIPESTATUS[0]}"
           echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
           exit "${status}"
@@ -267,11 +152,6 @@ jobs:
           CHANGE_NAME: ${{ steps.change.outputs.name }}
         run: |
           set -o pipefail
-          # tee combined output to validate.log so a failing validation is
-          # visible live and preserved as an artifact (it ran silently before).
-          # continue-on-error keeps steps.validate.outcome driving the report
-          # without failing the job; exiting PIPESTATUS[0] makes that outcome
-          # reflect the real validate result.
           openspec validate "${CHANGE_NAME}" 2>&1 | tee validate.log
           exit "${PIPESTATUS[0]}"
 
@@ -282,36 +162,18 @@ jobs:
         run: |
           set -euo pipefail
           git add -A
-          # Runner-local logs are uploaded as the agent-logs artifact; keep all
-          # three (apply.jsonl, apply.log, validate.log) out of the result commit.
           git reset -- apply.jsonl apply.log validate.log 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
-            # Subject MUST stay "opsx:apply <name>" — it must NOT start with
-            # /spec:apply, which the backend would classify as a new trigger
-            # and re-dispatch, looping. The runner-local logs (apply.jsonl,
-            # apply.log, validate.log) are excluded above so they never land in
-            # the result commit.
+            # Subject must not start with /spec:apply, or the backend re-dispatches and loops.
             git commit -m "opsx:apply ${CHANGE_NAME}"
-            # Pushed via the job's GITHUB_TOKEN (actions/checkout's default
-            # persist-credentials: true; no custom push token). Deliberately NO
-            # --force/--force-with-lease: when head_sha was checked out and the
-            # branch tip has since moved, the result is not a fast-forward and
-            # this push is REJECTED. That fail-closed behavior is intentional — we
-            # refuse to clobber newer human commits. The concurrency guard
-            # supersedes in-flight applies, so divergence is the rare exception.
+            # No --force: a diverged branch tip fails closed rather than clobbering newer human commits.
             if ! git push origin "HEAD:refs/heads/${BRANCH}"; then
               echo "::error::Push to ${BRANCH} rejected (non-fast-forward): the branch tip diverged from the checked-out sha during the apply, so newer commits would be overwritten. Failing closed without force-pushing — re-trigger /spec:apply to apply against the current tip." >&2
               exit 1
             fi
           fi
-          # Implicit push → PR-open handshake; there is NO runner → backend
-          # callback. This push — observed by GitHub as sender github-actions[bot]
-          # (the GITHUB_TOKEN actor, NOT specfly[bot]) — is the signal the Specfly
-          # backend's `push` webhook handler uses to open/update the PR as
-          # Specfly[bot], a separate actor so the PR is approvable and CI triggers.
-          # The runner deliberately does NOT open the PR.
 
       - name: Report apply & validation outcome
         if: always()
@@ -320,12 +182,6 @@ jobs:
           VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
           CHANGE_NAME: ${{ steps.change.outputs.name }}
         run: |
-          # Observability ONLY. This step does NOT gate the push and does NOT
-          # fail the job: apply + validate keep continue-on-error, the branch is
-          # pushed regardless, and the run stays green unless an infra step errors.
-          # It consumes steps.apply.outputs.exit_code (produced earlier but
-          # previously unread) and steps.validate.outcome, surfacing both to the
-          # job summary and as ::warning annotations when either failed.
           apply_exit="${APPLY_EXIT:-unknown}"
           validate_outcome="${VALIDATE_OUTCOME:-unknown}"
           if [ "${apply_exit}" = "0" ]; then

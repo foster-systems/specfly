@@ -53,7 +53,8 @@ into the **adopter's own data plane** (their GitHub Actions runner).
   │                              │         │    → (free: no entitlement gate)  │
   │  runner runs apply.yml  ◀────┼─────────┤    → repository_dispatch          │
   │    - checkout                │         │                                   │
-  │    - install pnpm/bun        │         │                                   │
+  │    - setup Node + CLIs       │         │                                   │
+  │    - agent provisions env    │         │                                   │
   │    - run Claude /opsx:apply  │         │                                   │
   │    - push change/<name>  ────┼────────▶│  App opens/updates PR as          │
   │      (GITHUB_TOKEN)          │         │  Specfly[bot]  (separate actor)   │
@@ -96,8 +97,10 @@ Actions. The backend only routes events and authors the PR.
 ### 4.3 Versioned reusable workflow (`apply.yml`)
 
 - Lives in the public `foster-systems/specfly` repo, pinned by tag (`@v1`). Contains the actual
-  steps: checkout, resolve package manager, run Claude Code `/opsx:apply`, push
-  the change branch.
+  steps: checkout, set up Node + Specfly's own CLIs (Claude Code + OpenSpec), run
+  Claude Code `/opsx:apply` (the agent provisions the project's own environment in a
+  sub-agent), push the change branch. It makes **no** assumption about the adopter's
+  language or package manager.
 - This is the "proper version" adopters pull in. Upgrades = bump the tag.
 
 ### 4.4 Adopter footprint (the whole thing)
@@ -111,8 +114,12 @@ Actions. The backend only routes events and authors the PR.
 **Prerequisites**
 
 - An OpenSpec-initialised repo with `.claude/` committed.
-- A pnpm- or bun-managed JS repo (`packageManager` set, or bun lockfile).
 - An Anthropic API key.
+
+Any language/toolchain works — Specfly makes no assumption about your package
+manager. The agent provisions the project environment itself; document anything
+non-obvious in `CLAUDE.md` / `AGENTS.md` (see the README's "Fine-tuning for your
+stack").
 
 **One-time setup (a few clicks + two tiny commits)**
 
@@ -273,16 +280,25 @@ scale is **maintainer time** (support, on-call) — not dollars.
    terminal, and preserves the separate-actor PR (App opens it → approvable + CI
    triggers). Trade-offs: the `@spec:apply` prefix lives permanently in branch
    history; the trigger shows in `git log` rather than as a GitHub UI chip.
-3. **Prerequisite reduction.** ✅ **RESOLVED 2026-05-24: keep OpenSpec + pnpm/bun
-   as hard prereqs for now; broaden later if it doesn't force a redesign (it
-   won't).** Neither prereq is architecturally load-bearing: OpenSpec is the
-   substrate (`/opsx:apply` has nothing to act on without it), and pnpm/bun support
-   lives entirely in `apply.yml`'s "Resolve package manager" + deps-install steps —
-   the App + backend are agnostic to both. So future broadening is **additive and
-   localized**, never a control-plane change: add `npm ci`/`yarn --immutable` cases
-   to that one step (cheapest first win), or add an auto-init-OpenSpec onboarding
-   path. To keep that door cheap, the prereq gates stay **explicit and early**
-   (clear `::error::` messages) and **documented up front** (§5). No code change now.
+3. **Prerequisite reduction.** ✅ **RESOLVED 2026-05-24; BROADENING TAKEN
+   2026-05-27 — OpenSpec is now the one remaining hard prereq.** As predicted, the
+   pnpm/bun coupling was trivial to drop: it lived entirely in `apply.yml`'s
+   "Resolve package manager" + deps-install steps, with the App + backend agnostic
+   to it. Rather than the originally-floated additive matrix (`npm ci`/`yarn
+   --immutable` cases), the broadening was done by **subtraction + agent
+   delegation**: those steps were removed outright, and the apply prompt now has the
+   agent provision the project environment itself — in a sub-agent, guided by the
+   repo's native `CLAUDE.md` / `AGENTS.md`, best-effort and fail-open. This keeps
+   `apply.yml` *smaller* while making it run on **any** stack, with no per-language
+   workflow logic and no control-plane change. OpenSpec remains the only hard prereq
+   (`/opsx:apply` has nothing to act on without it). See the `tech-agnostic-apply`
+   change.
+   - **Original 2026-05-24 analysis (kept for the record):** keep OpenSpec + pnpm/bun
+     as hard prereqs for now; broaden later if it doesn't force a redesign (it
+     won't). Neither prereq is architecturally load-bearing — future broadening is
+     **additive and localized**, never a control-plane change. To keep that door
+     cheap, the prereq gates stay **explicit and early** (clear `::error::` messages)
+     and **documented up front** (§5).
 
 ## 12. Naming
 
