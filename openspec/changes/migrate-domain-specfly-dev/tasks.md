@@ -29,17 +29,17 @@
 > Additive-first ordering protects the one installed adopter; keep `specfly.io` resolving
 > until step 3.4 repoints the App. See `design.md` for rationale.
 
-- [ ] 3.1 Add the `specfly.dev` zone to the Cloudflare account (DNS hosted there) so
+- [x] 3.1 Add the `specfly.dev` zone to the Cloudflare account (DNS hosted there) so
       `custom_domain = true` can auto-provision the `api.specfly.dev` record + TLS cert.
-- [ ] 3.2 From `backend/`, run `wrangler deploy` with the updated route. The old
+- [x] 3.2 From `backend/`, run `wrangler deploy` with the updated route. The old
       `specfly.io` host still resolves and the App still points at the old URL, so no
       delivery has moved yet.
-- [ ] 3.3 Verify `https://api.specfly.dev/webhook` is reachable: valid TLS and `GET /` →
+- [x] 3.3 Verify `https://api.specfly.dev/webhook` is reachable: valid TLS and `GET /` →
       `200` health check.
-- [ ] 3.4 Repoint the GitHub App webhook URL (Settings → specfly → Webhook URL) to
+- [x] 3.4 Repoint the GitHub App webhook URL (Settings → specfly → Webhook URL) to
       `https://api.specfly.dev/webhook`. This is the atomic cutover.
-- [ ] 3.5 Smoke-test from the App's *Advanced* tab: redeliver a recent webhook → expect
+- [x] 3.5 Smoke-test from the App's *Advanced* tab: redeliver a recent webhook → expect
       `2xx`; send a corrupted-signature delivery → expect `401`.
-- [ ] 3.6 Leave `specfly.io` resolving as a safety net (rollback = repoint the App URL back
+- [x] 3.6 Leave `specfly.io` resolving as a safety net (rollback = repoint the App URL back
       to `https://api.specfly.io/webhook`). Decommissioning `specfly.io` is a later,
       separate cleanup.
