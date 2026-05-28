@@ -56,7 +56,12 @@ it yourself and your CI still triggers.
          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
    ```
 
-4. **(Recommended) Protect `main`** — require a PR + 1 approval, block direct
+4. **Copy one command file** — `.claude/commands/spec/apply.md` into your repo.
+   Then `/spec:apply [<name>]` is how you **trigger an apply** (it crafts the
+   trigger commit and pushes it). Distinct from `/opsx:apply`, which implements a
+   change's tasks **locally**.
+
+5. **(Recommended) Protect `main`** — require a PR + 1 approval, block direct
    pushes. Documented, not auto-configured (Specfly never asks for admin rights):
    **[docs/protect-main.md](docs/protect-main.md)** (UI walkthrough + one `gh` command).
 

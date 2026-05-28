@@ -107,6 +107,7 @@ Actions. The backend only routes events and authors the PR.
 
 - One Actions secret: `ANTHROPIC_API_KEY`.
 - One ~10-line caller workflow (see §5).
+- One command file: `.claude/commands/spec/apply.md` (the `/spec:apply` trigger).
 - That's it.
 
 ## 5. Adopter setup
@@ -181,16 +182,18 @@ snippet are written up in **[docs/protect-main.md](docs/protect-main.md)**.
 
 ## 7. Usage flow (per change)
 
-1. Local: `claude /opsx:propose` to design and plan the change, push `change/<name>` branch. Ordinary WIP pushes are
-   free and silent.
-2. When ready, make a commit whose subject starts with **`@spec:apply`** and
-   push it. The backend (push webhook) matches the branch + prefix and dispatches.
+1. Local: `claude /opsx:propose` to design and plan the change. The work lives on a
+   `change/<name>` branch — `/spec:apply` (step 2) creates it on first run if you
+   haven't already. Ordinary WIP pushes are free and silent.
+2. When ready, run **`/spec:apply`** (it produces a commit whose subject starts with
+   **`/spec:apply`** and pushes it). The backend (push webhook) matches the branch +
+   prefix and dispatches.
 3. The runner runs `/opsx:apply` and pushes the result commits to `change/<name>`
    (subject `opsx:apply <name>` — no prefix, so it can't re-trigger). The backend
    sees that result push and opens the PR as **`Specfly[bot]`** — a distinct actor,
    so you (the reviewer) can approve it and your CI triggers. No PR exists before apply completes.
 4. Review the PR — findings may produce extra tasks to be applied. Re-run them
-   with **`@spec:apply`**: each run pushes more commits to `change/<name>` and
+   with **`/spec:apply`**: each run pushes more commits to `change/<name>` and
    the existing PR updates in place (no new PR is opened). Those result commits are
    pushed with the runner's `GITHUB_TOKEN`, which on its own would _not_ re-fire CI
    (GitHub's anti-recursion rule — see §11 Q1), so the backend refreshes CI by
