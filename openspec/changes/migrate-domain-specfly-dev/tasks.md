@@ -1,14 +1,14 @@
 ## 1. Repository: flip the host references
 
-- [ ] 1.1 In `backend/wrangler.toml`, change the route `pattern = "api.specfly.io"` to
+- [x] 1.1 In `backend/wrangler.toml`, change the route `pattern = "api.specfly.io"` to
       `pattern = "api.specfly.dev"`, and update the adjacent comment that names the required
       zone (`specfly.io` zone → `specfly.dev` zone).
-- [ ] 1.2 In `backend/README.md`, update the deploy runbook (step 5, ~line 237) so the
+- [x] 1.2 In `backend/README.md`, update the deploy runbook (step 5, ~line 237) so the
       route/custom-domain and GitHub App webhook URL read `https://api.specfly.dev/webhook`.
-- [ ] 1.3 In `backend/test/signature.test.ts`, change the request URL
+- [x] 1.3 In `backend/test/signature.test.ts`, change the request URL
       `https://api.specfly.io/webhook` → `https://api.specfly.dev/webhook` (cosmetic — the
       HMAC is over the body, not the host; assertions are unchanged).
-- [ ] 1.4 Update the active planning docs that cite the old host:
+- [x] 1.4 Update the active planning docs that cite the old host:
       `openspec/_planning/HIGH-LEVEL-DESIGN.md` (backend host, the fixed-cost domain line,
       and the identity line), `openspec/_planning/briefing-build.md`, and
       `openspec/_planning/briefing-first-live-apply.md` — `api.specfly.io` →
@@ -18,9 +18,9 @@
 
 ## 2. Repository: verify
 
-- [ ] 2.1 From `backend/`, run `npx tsc --noEmit` (or the project's typecheck) — clean.
-- [ ] 2.2 From `backend/`, run the vitest suite — all green (no test logic changed).
-- [ ] 2.3 Run `git grep -i 'specfly\.io'` from the repo root — confirm the only remaining
+- [x] 2.1 From `backend/`, run `npx tsc --noEmit` (or the project's typecheck) — clean.
+- [x] 2.2 From `backend/`, run the vitest suite — all green (no test logic changed).
+- [x] 2.3 Run `git grep -i 'specfly\.io'` from the repo root — confirm the only remaining
       hits are under `openspec/changes/archive/**` and `openspec/_planning/archive/`
       (intentional audit trail) plus the roadmap line for R1 itself.
 

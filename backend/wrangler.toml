@@ -7,9 +7,9 @@ compatibility_date = "2026-05-01"
 compatibility_flags = ["nodejs_compat"]
 
 # Custom domain — the GitHub App webhook target. `custom_domain = true` auto-provisions
-# the DNS record + TLS cert (requires the specfly.io zone on this Cloudflare account).
+# the DNS record + TLS cert (requires the specfly.dev zone on this Cloudflare account).
 [[routes]]
-pattern = "api.specfly.io"
+pattern = "api.specfly.dev"
 custom_domain = true
 
 [[d1_databases]]

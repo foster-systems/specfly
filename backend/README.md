@@ -234,7 +234,7 @@ the CI-refresh.
    ```bash
    wrangler deploy
    ```
-5. **Bind the route / custom domain** so `https://api.specfly.io/webhook` reaches
+5. **Bind the route / custom domain** so `https://api.specfly.dev/webhook` reaches
    the Worker, and set the GitHub App's webhook URL to it.
 6. **Smoke test:** from the App's *Advanced* tab, redeliver a recent webhook and
    confirm a `2xx` (and a `401` for a deliberately corrupted signature).
