@@ -166,11 +166,11 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
-            # Subject must not start with /spec:apply, or the backend re-dispatches and loops.
+            # Subject must not start with /sfx:apply, or the backend re-dispatches and loops.
             git commit -m "opsx:apply ${CHANGE_NAME}"
             # No --force: a diverged branch tip fails closed rather than clobbering newer human commits.
             if ! git push origin "HEAD:refs/heads/${BRANCH}"; then
-              echo "::error::Push to ${BRANCH} rejected (non-fast-forward): the branch tip diverged from the checked-out sha during the apply, so newer commits would be overwritten. Failing closed without force-pushing — re-trigger /spec:apply to apply against the current tip." >&2
+              echo "::error::Push to ${BRANCH} rejected (non-fast-forward): the branch tip diverged from the checked-out sha during the apply, so newer commits would be overwritten. Failing closed without force-pushing — re-trigger /sfx:apply to apply against the current tip." >&2
               exit 1
             fi
           fi

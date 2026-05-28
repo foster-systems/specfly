@@ -25,7 +25,7 @@ running Claude Code — happens in your Actions on your Anthropic key. Specfly o
 routes the trigger and authors the PR.
 
 ```
-  push a commit "/spec:apply…" on change/<name>  →  Specfly App (push webhook)
+  push a commit "/sfx:apply…" on change/<name>  →  Specfly App (push webhook)
      →  repository_dispatch  →  your runner runs /opsx:apply + pushes the result
      →  Specfly[bot] opens the PR (once apply completes)  →  you review, approve, merge
 ```
@@ -56,8 +56,8 @@ it yourself and your CI still triggers.
          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
    ```
 
-4. **Copy one command file** — `.claude/commands/spec/apply.md` into your repo.
-   Then `/spec:apply [<name>]` is how you **trigger an apply** (it crafts the
+4. **Copy one command file** — `.claude/commands/sfx/apply.md` into your repo.
+   Then `/sfx:apply [<name>]` is how you **trigger an apply** (it crafts the
    trigger commit and pushes it). Distinct from `/opsx:apply`, which implements a
    change's tasks **locally**.
 
