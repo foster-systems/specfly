@@ -21,8 +21,8 @@ Specfly is Spec-Driven Development tooling. It builds on awesome [OpenSpec](http
 ## How it works
 
 A hosted Specfly **control plane** (a GitHub App + a tiny backend) dispatches work into
-*your*  Actions runner. Cloning and running the Agent — happens in your Actions on your Anthropic key. Specfly only
-routes the trigger and authors the PR.
+*your*  Actions runner. Cloning and running the Agent happens in your Actions on your Anthropic key. Specfly only
+routes the trigger and authors the PR. All your data stays in your environment at all times.
 
 Because the PR is authored by `Specfly[bot]` (a separate actor), you can approve
 it yourself and your CI still triggers. See the [design overview](docs/design.md) for the full architecture and security model.
