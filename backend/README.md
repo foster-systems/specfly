@@ -2,19 +2,20 @@
 
 The Specfly **control plane**: a single Cloudflare Worker that turns an adopter's
 `/sfx:apply` commit into a runner dispatch, then turns the runner's result into
-a pull request authored by the `specfly[bot]` GitHub App. This is the whole reason
-the App identity exists — an App-authored PR (or App push) is a distinct actor a
-solo maintainer can approve **and** that re-fires the adopter's CI, neither of which
-a `GITHUB_TOKEN`-authored PR/push can do.
+a pull request authored by the `specfly[bot]` GitHub App.
 
 It does exactly two jobs and nothing else: no dashboard, no UI, no OAuth, no
 billing, no custody of adopter source or logs. The `installation` webhook is
 acknowledged but no longer persisted — the install list is recoverable on demand
 via the App API (`GET /app/installations`). What it does store in D1 is
 **ephemeral, non-attributable** operational state: HMAC-keyed digests (no plaintext
-repo/account/branch/change name), swept past a short TTL. See
-`../openspec/_planning/HIGH-LEVEL-DESIGN.md` (§3, §4, §6, §7, §11) and
-`briefing-build.md` for the authoritative design.
+repo/account/branch/change name), swept past a short TTL.
+
+This README is the **engineering reference** (endpoints, layout, runbook). For
+*why* the App identity exists, the security model, and the cost model, see the
+[design overview](../docs/design.md) and the canonical
+[`HIGH-LEVEL-DESIGN.md`](../openspec/_planning/HIGH-LEVEL-DESIGN.md)
+(§3, §4, §6, §7, §11); `briefing-build.md` holds the build-time detail.
 
 ## Endpoints
 
