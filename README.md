@@ -20,20 +20,12 @@ Specfly is Spec-Driven Development tooling. It builds on awesome [OpenSpec](http
 
 ## How it works
 
-A hosted **control plane** (a GitHub App + a tiny backend) dispatches work into
-*your* **data plane** (your Actions runner). The expensive part — cloning and
-running Claude Code — happens in your Actions on your Anthropic key. Specfly only
+A hosted Specfly **control plane** (a GitHub App + a tiny backend) dispatches work into
+*your*  Actions runner. Cloning and running the Agent — happens in your Actions on your Anthropic key. Specfly only
 routes the trigger and authors the PR.
 
-```
-  push a commit "/sfx:apply…" on change/<name>  →  Specfly App (push webhook)
-     →  repository_dispatch  →  your runner runs /opsx:apply + pushes the result
-     →  Specfly[bot] opens the PR (once apply completes)  →  you review, approve, merge
-```
-
 Because the PR is authored by `Specfly[bot]` (a separate actor), you can approve
-it yourself and your CI still triggers. See the
-[design overview](docs/design.md) for the full architecture and security model.
+it yourself and your CI still triggers. See the [design overview](docs/design.md) for the full architecture and security model.
 
 ## Get started
 
