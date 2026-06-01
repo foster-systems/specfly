@@ -5,34 +5,34 @@ TBD - created by archiving change build-backend. Update Purpose after archive.
 ## Requirements
 ### Requirement: Trigger command namespace
 
-The system SHALL recognize apply triggers under the `/spec:` command namespace. The
-trigger marker is the `/spec:` prefix immediately followed by a command **verb** on the
+The system SHALL recognize apply triggers under the `/sfx:` command namespace. The
+trigger marker is the `/sfx:` prefix immediately followed by a command **verb** on the
 **first line** of the tip commit, after trimming leading whitespace. The system SHALL
-recognize exactly one verb, `apply`. The bare namespace (`/spec:`), the namespace
-followed by whitespace before any verb (e.g. `/spec: apply`), and any other verb (e.g.
-`/spec:foo`, `/spec:applyx`) SHALL NOT be triggers. Matching SHALL be case-sensitive.
-The legacy `@spec:apply` prefix SHALL NOT be recognized (it classifies as `ignore`).
+recognize exactly one verb, `apply`. The bare namespace (`/sfx:`), the namespace
+followed by whitespace before any verb (e.g. `/sfx: apply`), and any other verb (e.g.
+`/sfx:foo`, `/sfx:applyx`) SHALL NOT be triggers. Matching SHALL be case-sensitive.
+The legacy `/spec:apply` prefix SHALL NOT be recognized (it classifies as `ignore`).
 
 #### Scenario: Apply verb is recognized
 
-- **WHEN** the tip-commit first line is `/spec:apply` (optionally followed by `key=value`
+- **WHEN** the tip-commit first line is `/sfx:apply` (optionally followed by `key=value`
   args)
 - **THEN** the recognized command verb is `apply` and the commit is a trigger
 
 #### Scenario: Unknown verb is not a trigger
 
-- **WHEN** the tip-commit first line is `/spec:foo` or `/spec:applyx`
+- **WHEN** the tip-commit first line is `/sfx:foo` or `/sfx:applyx`
 - **THEN** no recognized verb matches `apply`, so the push is not a trigger
 
 #### Scenario: Bare namespace is not a trigger
 
-- **WHEN** the tip-commit first line is exactly `/spec:`, or `/spec:` followed by
-  whitespace (e.g. `/spec: apply`)
+- **WHEN** the tip-commit first line is exactly `/sfx:`, or `/sfx:` followed by
+  whitespace (e.g. `/sfx: apply`)
 - **THEN** no verb is extracted and the push is not a trigger
 
 #### Scenario: Legacy prefix is no longer recognized
 
-- **WHEN** the tip-commit first line starts with `@spec:apply`
+- **WHEN** the tip-commit first line starts with `/spec:apply`
 - **THEN** it is not a trigger and the push classifies as `ignore`
 
 ### Requirement: Push classification
@@ -45,7 +45,7 @@ any push it cannot positively classify, SHALL be `ignore`.
 #### Scenario: Human apply commit classifies as trigger
 
 - **WHEN** a `push` targets `refs/heads/change/<name>`, its tip-commit first line is a
-  `/spec:apply` command, and the sender is not `github-actions[bot]`
+  `/sfx:apply` command, and the sender is not `github-actions[bot]`
 - **THEN** classification is `trigger`
 
 #### Scenario: Runner result push classifies as result
@@ -57,7 +57,7 @@ any push it cannot positively classify, SHALL be `ignore`.
 #### Scenario: App CI-refresh push classifies as ignore
 
 - **WHEN** a `push` targets `refs/heads/change/<name>`, the sender is `specfly[bot]`,
-  and the tip-commit first line is not a `/spec:apply` command
+  and the tip-commit first line is not a `/sfx:apply` command
 - **THEN** classification is `ignore` (it is neither a trigger nor a result, so it cannot loop)
 
 #### Scenario: Non-change branch is ignored
@@ -70,7 +70,7 @@ any push it cannot positively classify, SHALL be `ignore`.
 The system SHALL treat a `push` as an apply trigger only when ALL hold: the ref is
 under `refs/heads/change/` (yielding `branch` and `change_name`); the **first line**
 of the tip commit (`head_commit`) message, after trimming leading whitespace, is a
-`/spec:apply` command (the `/spec:` namespace immediately followed by the `apply` verb,
+`/sfx:apply` command (the `/sfx:` namespace immediately followed by the `apply` verb,
 case-sensitive — see "Trigger command namespace"); the sender is not
 `github-actions[bot]`; and no `runs` row already exists for
 `(repo_full_name, trigger_sha)`. Only the tip commit SHALL be evaluated, even when the
@@ -79,29 +79,29 @@ push contains multiple commits.
 #### Scenario: Only the tip commit is evaluated
 
 - **WHEN** a push to `change/<name>` contains several commits and only `head_commit`'s
-  first line is a `/spec:apply` command
+  first line is a `/sfx:apply` command
 - **THEN** the push is a trigger evaluated against the tip commit's first line and sha
 
 #### Scenario: Prefix must be on the first line
 
-- **WHEN** the tip-commit first line is not a `/spec:apply` command
+- **WHEN** the tip-commit first line is not a `/sfx:apply` command
   (e.g. the marker appears only in the body)
 - **THEN** the push is not a trigger
 
 ### Requirement: Apply-argument parsing
 
-The system SHALL optionally parse `key=value` tokens following the `/spec:apply` command
+The system SHALL optionally parse `key=value` tokens following the `/sfx:apply` command
 on the first line, recognizing `model` and `effort` and ignoring unknown keys.
 Absence of these tokens SHALL be valid.
 
 #### Scenario: Known args parsed, unknown ignored
 
-- **WHEN** the trigger first line is `/spec:apply model=opus effort=high foo=bar`
+- **WHEN** the trigger first line is `/sfx:apply model=opus effort=high foo=bar`
 - **THEN** `model` is `opus`, `effort` is `high`, and `foo` is ignored
 
 #### Scenario: No args yields empty options
 
-- **WHEN** the trigger first line is exactly `/spec:apply`
+- **WHEN** the trigger first line is exactly `/sfx:apply`
 - **THEN** parsing yields no `model` and no `effort`
 
 ### Requirement: Repository dispatch on trigger
@@ -127,7 +127,7 @@ On a successful dispatch the system SHALL `INSERT` a `runs` row with
 repository, branch, sha, or delivery identifiers (see the `ephemeral-state`
 capability). The unique `trigger_key` together with the pre-dispatch "no existing run"
 check SHALL prevent a double dispatch on webhook redelivery, while a new
-`/spec:apply` commit (new sha, hence a new `trigger_key`) SHALL create a new run
+`/sfx:apply` commit (new sha, hence a new `trigger_key`) SHALL create a new run
 and re-dispatch.
 
 #### Scenario: Redelivery does not double-dispatch
@@ -137,6 +137,6 @@ and re-dispatch.
 
 #### Scenario: Re-apply with a new sha re-dispatches
 
-- **WHEN** a developer pushes a second `/spec:apply` commit (new sha → new `trigger_key`) to the same branch
+- **WHEN** a developer pushes a second `/sfx:apply` commit (new sha → new `trigger_key`) to the same branch
 - **THEN** a new `dispatched` run row is created and a fresh dispatch is fired
 

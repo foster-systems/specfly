@@ -11,12 +11,12 @@ The reusable apply workflow (`.github/workflows/apply.yml`) SHALL declare a
 each `repository_dispatch` runs a separate caller workflow run that calls this reusable
 workflow, all such runs for one change share a single concurrency group; a newer
 trigger's apply job SHALL cancel any in-flight apply job for the same change before it
-reaches the push step, so rapid same-branch `/spec:apply` triggers resolve to exactly
+reaches the push step, so rapid same-branch `/sfx:apply` triggers resolve to exactly
 one effective apply and the **newest** trigger is the one that pushes.
 
 #### Scenario: A newer trigger cancels the in-flight apply
 
-- **WHEN** two `/spec:apply` commits are pushed to `change/<name>` in quick
+- **WHEN** two `/sfx:apply` commits are pushed to `change/<name>` in quick
   succession and the backend re-dispatches for each, while the first apply job is still
   running
 - **THEN** the second apply job shares the concurrency group `specfly-apply-<name>` and
