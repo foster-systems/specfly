@@ -2,37 +2,23 @@
 
 # Specfly
 
-**Push an OpenSpec change, get a reviewable pull request — from a GitHub-hosted Claude Code run.**
+**Push an specification, get a reviewable pull request — from a GitHub-hosted Agent run.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Powered by Claude Code](https://img.shields.io/badge/powered%20by-Claude%20Code-6f42c1.svg)](https://claude.com/claude-code)
 
 </div>
 
-> **Status: early development.** The architecture is settled (see the
-> [design overview](docs/design.md)) and this repo is being built in the open.
-> Not yet ready for general adoption.
-
-Specfly runs Claude Code's `/opsx:apply` on *your own* GitHub Actions runner and
-opens a PR for your review — no laptop tether, and almost no setup. It's the
-successor to [remcc](https://github.com/foster-systems/remcc), redesigned to make
-adoption a few clicks instead of a custom GitHub App per repo.
+Specfly is Spec-Driven Development tooling. It builds on awesome [OpenSpec](https://github.com/Fission-AI/OpenSpec) to make working with LLMs efficient, and helps you run your specs in a **safe** environment with full control and and minimal setup on your end.
 
 ## Why Specfly
 
-- **🛡️ Safe unattended runs.** The agent runs in an ephemeral, isolated GitHub
-  Actions environment on a single-repo token that expires with the job. A `main`
-  branch ruleset *you* own — not any token's scope — is what fences unreviewed
-  code off `main`, and the PR lands as `Specfly[bot]` so you review every change
-  before it merges.
-- **💸 Cost control.** Bring your own Anthropic key — no token reselling, no
-  billing, no custody of your source or compute. It all stays in your runner on
-  your key, and the hosted backend is a webhook router with near-zero maintainer
-  cost.
-- **🧩 Composable.** It's just Claude Code + GitHub Actions + OpenSpec
-  `/opsx:apply` on a repo of **any** technology (Python, Rust, Go, Ruby, JVM, JS,
+- **🛡️ Safe unattended runs.** The agent runs in an ephemeral, isolated GitHub Actions environment on a single-repo token that expires with the job. 
+- **💸 Cost control.** Bring your own Anthropic key and run on your Github runner or your own custom runner. Simple and fully transparent.
+- **🧩 Open and composable.** Supports **any** technology (Python, Rust, Go, Ruby, JVM, JS,
   …). The agent provisions its own environment, so there's nothing to declare and
   it drops into bigger workflows cleanly.
+- **🥇Best practices.** Stay efficient in the long run with spec-driven advantage and flawlessly adopt even [brownfield](https://en.wikipedia.org/wiki/Brownfield_(software_development)) projects.
 
 ## How it works
 
