@@ -13,12 +13,10 @@ Specfly is Spec-Driven Development tooling. It builds on awesome [OpenSpec](http
 
 ## Why Specfly
 
-- **🛡️ Safe unattended runs.** The agent runs in an ephemeral, isolated GitHub Actions environment on a single-repo token that expires with the job. 
-- **💸 Cost control.** Bring your own Anthropic key and run on your Github runner or your own custom runner. Simple and fully transparent.
-- **🧩 Open and composable.** Supports **any** technology (Python, Rust, Go, Ruby, JVM, JS,
-  …). The agent provisions its own environment, so there's nothing to declare and
-  it drops into bigger workflows cleanly.
-- **🥇Best practices.** Stay efficient in the long run with spec-driven advantage and flawlessly adopt even [brownfield](https://en.wikipedia.org/wiki/Brownfield_(software_development)) projects.
+- **🛡️ Safe unattended runs.** The agent runs in an ephemeral, isolated GitHub Actions environment. 
+- **💸 Cost control.** Bring your own Anthropic key and run on your Github runner.
+- **🧩 Open and composable.** Supports **any** popular tech stack and drops into bigger workflows cleanly.
+- **🥇Best practices.** Stay efficient in the long run with spec-driven advantage.
 
 ## How it works
 
