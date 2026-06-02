@@ -16,6 +16,28 @@ non-obvious in `CLAUDE.md` / `AGENTS.md` (see
 
 ## One-time setup
 
+### Quickstart — the installer
+
+From inside a clone of your GitHub repo, with an authenticated
+[`gh` CLI](https://cli.github.com) and `git` available:
+
+```bash
+curl -fsSL https://specfly.dev/install.sh | bash
+```
+
+The installer automates the mechanical steps below (the caller workflow, the
+`/sfx:apply` command file, the `ANTHROPIC_API_KEY` secret, and — on confirmation
+— the `main` ruleset) and pauses to guide you through the browser-only steps it
+cannot automate (installing OpenSpec, installing the Specfly App, creating an
+Anthropic key). It preflights its requirements, makes no changes if they are
+unmet, and is safe to re-run. The manual steps below remain the documented
+fallback.
+
+> **Prerequisites for the installer:** an authenticated `gh` CLI and `git`, run
+> from inside your repo clone (its `origin` must point at your GitHub repo).
+
+### Manual steps
+
 ### 1. Install the Specfly App
 
 Install it at [`github.com/apps/specfly`](https://github.com/apps/specfly) and

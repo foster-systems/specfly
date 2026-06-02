@@ -29,12 +29,28 @@ Specfly is a [Spec-Driven Development](https://specdriven.com/) tooling. It buil
 
 ## Get started
 
+From inside a clone of your GitHub repo (with an authenticated [`gh`](https://cli.github.com) and `git`):
+
+```bash
+curl -fsSL https://specfly.dev/install.sh | bash
+```
+
+The installer does the mechanical setup (caller workflow, `/sfx:apply` command file,
+`ANTHROPIC_API_KEY` secret, optional `main` ruleset) and walks you through the
+browser-only steps (OpenSpec init, GitHub App install, API-key creation). It is safe
+to re-run.
+
+<details>
+<summary>Prefer to do it by hand? The manual steps</summary>
+
 1. **Install [OpenSpec](https://github.com/Fission-AI/OpenSpec)** - the spec-driven development framework.
 1. **Install the Specfly App** at [`github.com/apps/specfly`](https://github.com/apps/specfly) - pick your repos.
 1. **Add one secret** — `ANTHROPIC_API_KEY` - your own key.
 1. **Add one caller workflow** — see [`examples/adopter-workflow.yml`](examples/adopter-workflow.yml).
 1. **Copy one command file** — `.claude/commands/sfx/apply.md`; then `/sfx:apply [<change-name>]` triggers an apply.
 1. **(Recommended) Protect `main`** — require a PR + 1 approval, block direct pushes: [Protecting `main`](docs/protect-main.md).
+
+</details>
 
 Full walkthrough, the per-change usage flow, and how to
 [fine-tune for your stack](docs/fine-tuning.md) are in
