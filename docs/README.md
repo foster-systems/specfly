@@ -7,5 +7,6 @@
 | [Fine-tuning for your stack](fine-tuning.md) | How the agent provisions your environment, and what to document in `CLAUDE.md` / `AGENTS.md` for less common toolchains. |
 | [Protecting `main`](protect-main.md) | The branch ruleset that keeps unreviewed code off `main` — UI walkthrough plus a copy-paste `gh` command. |
 | [Backend reference](../backend/README.md) | Control-plane engineering reference — endpoints, layout, runbook for the Cloudflare Worker. |
+| [Site deploy runbook](site-deploy.md) | Deploy, verify, and roll back the public landing page at `specfly.dev` (Cloudflare Workers static assets). |
 
 The top-level [README](../README.md) is the benefit-led landing page.

@@ -1,0 +1,178 @@
+:root {
+  --emerald: #10b981;
+  --emerald-dark: #059669;
+  --bg: #0b0f0e;
+  --panel: #111614;
+  --text: #e7eceb;
+  --muted: #9aa6a2;
+  --border: #1f2826;
+  --code-bg: #0e1413;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--emerald); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 4rem 1.5rem 2rem;
+}
+
+/* Hero */
+.hero { text-align: center; }
+
+h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 0.5rem;
+  background: linear-gradient(135deg, var(--emerald), #6ee7b7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.pitch {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0.5rem auto 0.75rem;
+  max-width: 36ch;
+}
+.pitch em { color: var(--emerald); font-style: normal; }
+
+.sub {
+  color: var(--muted);
+  max-width: 48ch;
+  margin: 0 auto 2.5rem;
+}
+
+/* Install centerpiece */
+.install {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin: 0 auto 2rem;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.08), 0 18px 40px -24px rgba(16, 185, 129, 0.5);
+}
+.install-label {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.install-block {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+}
+.install-block code {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.95rem;
+  color: var(--text);
+  text-align: left;
+  align-self: center;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+#copy-btn {
+  flex: none;
+  border: 0;
+  border-radius: 8px;
+  background: var(--emerald);
+  color: #04140e;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0 0.9rem;
+  cursor: pointer;
+}
+#copy-btn:hover { background: var(--emerald-dark); }
+.install-note { margin: 0.85rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.install-note code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  background: var(--code-bg);
+  padding: 0.05em 0.35em;
+  border-radius: 5px;
+}
+
+/* CTAs */
+.cta { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-block;
+  padding: 0.6rem 1.25rem;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.btn:hover { text-decoration: none; border-color: var(--emerald); }
+.btn.primary { background: var(--emerald); color: #04140e; border-color: var(--emerald); }
+.btn.primary:hover { background: var(--emerald-dark); border-color: var(--emerald-dark); }
+
+/* Sections */
+section { margin-top: 3.5rem; }
+h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 1.25rem;
+}
+
+.why ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+.why li { display: flex; gap: 0.85rem; align-items: flex-start; }
+.why .ico { font-size: 1.3rem; line-height: 1.4; flex: none; }
+.why strong { color: var(--text); }
+.why .detail { font-size: 0.85rem; color: var(--muted); }
+
+.how ol { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.6rem; color: var(--muted); }
+.how li { padding-left: 0.25rem; }
+.how strong, .how code { color: var(--text); }
+.how code, .why code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: var(--code-bg);
+  padding: 0.05em 0.4em;
+  border-radius: 5px;
+}
+
+/* Footer */
+footer {
+  max-width: 720px;
+  margin: 4rem auto 0;
+  padding: 2rem 1.5rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  main { padding-top: 2.5rem; }
+  h1 { font-size: 2.4rem; }
+  .pitch { font-size: 1.2rem; }
+}

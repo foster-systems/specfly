@@ -1,0 +1,14 @@
+{
+  "name": "specfly-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static landing page for specfly.dev",
+  "scripts": {
+    "predeploy": "cp ../install.sh public/install.sh",
+    "deploy": "wrangler deploy",
+    "dev": "npm run predeploy && wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.97.0"
+  }
+}

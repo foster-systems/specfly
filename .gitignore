@@ -9,3 +9,8 @@ dist/
 # Specfly backend (Cloudflare Worker)
 backend/.dev.vars
 backend/.wrangler/
+
+# Specfly site (Cloudflare Worker) — install.sh is copied from the repo root at
+# build time (predeploy); never commit the served copy so it can't drift.
+site/public/install.sh
+site/.wrangler/

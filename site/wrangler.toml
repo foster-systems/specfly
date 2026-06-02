@@ -1,0 +1,18 @@
+# Specfly public landing site — static assets served at the apex specfly.dev.
+# Separate Worker from the `specfly` backend (api.specfly.dev) — independent
+# deploy + rollback, no shared code or route.
+name = "specfly-site"
+compatibility_date = "2026-05-01"
+
+# Custom domain — the public apex. `custom_domain = true` auto-provisions the
+# DNS record + TLS cert (requires the specfly.dev zone on this Cloudflare
+# account). Distinct host from the backend Worker's api.specfly.dev — no collision.
+[[routes]]
+pattern = "specfly.dev"
+custom_domain = true
+
+[assets]
+directory = "./public"
+# Unknown paths return 404 rather than falling back to index.html, so real files
+# like /install.sh are served verbatim and never shadowed by the landing page.
+not_found_handling = "none"
