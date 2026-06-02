@@ -2,14 +2,14 @@
 
 # Specfly
 
-**Push an specification, get a reviewable pull request — from a GitHub-hosted Agent run.**
+**Push a change *proposal*, get a reviewable pull request with its implementation.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Powered by Claude Code](https://img.shields.io/badge/powered%20by-Claude%20Code-6f42c1.svg)](https://claude.com/claude-code)
 
 </div>
 
-Specfly is Spec-Driven Development tooling. It builds on awesome [OpenSpec](https://github.com/Fission-AI/OpenSpec) to make working with LLMs efficient, and helps you run your specs in a **safe** environment with full control and and minimal setup on your end.
+Specfly is a [Spec-Driven Development](https://specdriven.com/) tooling. It builds on awesome [OpenSpec](https://github.com/Fission-AI/OpenSpec) to make working with LLMs efficient, sustainable, and secure.
 
 ## Why Specfly
 
@@ -20,20 +20,21 @@ Specfly is Spec-Driven Development tooling. It builds on awesome [OpenSpec](http
 
 ## How it works
 
-A hosted Specfly **control plane** (a GitHub App + a tiny backend) dispatches work into
-*your*  Actions runner. Cloning and running the Agent happens in your Actions on your Anthropic key. Specfly only
-routes the trigger and authors the PR. All your data stays in your environment at all times.
-
-Because the PR is authored by `Specfly[bot]` (a separate actor), you can approve
-it yourself and your CI still triggers. See the [design overview](docs/design.md) for the full architecture and security model.
+1. Create a new change proposal with `/opsx:propose` Claude Code command - it will produce spec files for you.
+2. Review the change proposal files locally - it should accurately describe what you want to achieve with your change; prompt any changes that you think are needed.
+3. Trigger the change implementation with `/sfx:apply [<change-name>]` - it is using your Github Actions worker.
+4. Review & test the implementation PR; prompt any changes that you think are needed, and you can *apply* them again.
+5. Archive the change with `/opsx:archive`, commit & push, approve and merge the PR.
+6. Repeat.
 
 ## Get started
 
-1. **Install the Specfly App** at [`github.com/apps/specfly`](https://github.com/apps/specfly) (pick your repos).
-2. **Add one secret** — `ANTHROPIC_API_KEY` (bring your own key).
-3. **Add one caller workflow** — see [`examples/adopter-workflow.yml`](examples/adopter-workflow.yml).
-4. **Copy one command file** — `.claude/commands/sfx/apply.md`; then `/sfx:apply [<name>]` triggers an apply.
-5. **(Recommended) Protect `main`** — require a PR + 1 approval, block direct pushes: [Protecting `main`](docs/protect-main.md).
+1. **Install [OpenSpec](https://github.com/Fission-AI/OpenSpec)** - the spec-driven development framework.
+1. **Install the Specfly App** at [`github.com/apps/specfly`](https://github.com/apps/specfly) - pick your repos.
+1. **Add one secret** — `ANTHROPIC_API_KEY` - your own key.
+1. **Add one caller workflow** — see [`examples/adopter-workflow.yml`](examples/adopter-workflow.yml).
+1. **Copy one command file** — `.claude/commands/sfx/apply.md`; then `/sfx:apply [<change-name>]` triggers an apply.
+1. **(Recommended) Protect `main`** — require a PR + 1 approval, block direct pushes: [Protecting `main`](docs/protect-main.md).
 
 Full walkthrough, the per-change usage flow, and how to
 [fine-tune for your stack](docs/fine-tuning.md) are in
