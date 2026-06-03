@@ -9,7 +9,7 @@
 
 </div>
 
-Specfly is a [Spec-Driven Development](https://specdriven.com/) tooling. It builds on awesome [OpenSpec](https://github.com/Fission-AI/OpenSpec) to make coding with LLMs efficient, sustainable, and secure.
+Specfly is a [Spec-Driven Development](https://specdriven.com/) tooling. It builds on awesome [OpenSpec](https://github.com/Fission-AI/OpenSpec) to make coding with LLMs efficient and secure.
 
 ## Why Specfly
 
