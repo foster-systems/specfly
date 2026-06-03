@@ -13,16 +13,16 @@ Specfly is a [Spec-Driven Development](https://specdriven.com/) tooling. It buil
 
 ## Why Specfly
 
+- **🔑 You own it.** Your key, your runner, your repo — you control the cost, the data, and the flow.
 - **🛡️ Safe unattended runs.** The agent runs in an ephemeral, isolated GitHub Actions environment. 
-- **💸 Cost control.** Bring your own Anthropic key and run on your Github runner.
-- **🧩 Open and composable.** Supports **any** popular tech stack and drops into bigger workflows cleanly.
+- **🧩 Free and open.** Supports **any** popular tech stack and drops into bigger workflows cleanly.
 - **🥇Best practices.** Stay efficient in the long run with spec-driven advantage.
 
 ## How it works
 
-1. Create a new change proposal with `/opsx:propose` Claude Code command - it will produce spec files for you.
+1. Create a new change proposal with `/opsx:propose` Claude Code command.
 2. Review the change proposal files locally - it should accurately describe what you want to achieve with your change; prompt any changes that you think are needed.
-3. Trigger the change implementation with `/sfx:apply [<change-name>]` - it is using your Github Actions worker.
+3. Trigger the change implementation with `/sfx:apply <change-name>`.
 4. Review & test the implementation PR; prompt any changes that you think are needed, and you can *apply* them again.
 5. Archive the change with `/opsx:archive`, commit & push, approve and merge the PR.
 6. Repeat.
@@ -47,7 +47,7 @@ to re-run.
 1. **Install the Specfly App** at [`github.com/apps/specfly`](https://github.com/apps/specfly) - pick your repos.
 1. **Add one secret** — `ANTHROPIC_API_KEY` - your own key.
 1. **Add one caller workflow** — see [`examples/adopter-workflow.yml`](examples/adopter-workflow.yml).
-1. **Copy one command file** — `.claude/commands/sfx/apply.md`; then `/sfx:apply [<change-name>]` triggers an apply.
+1. **Copy one command file** — `.claude/commands/sfx/apply.md`; then `/sfx:apply <change-name>` triggers an apply.
 1. **(Recommended) Protect `main`** — require a PR + 1 approval, block direct pushes: [Protecting `main`](docs/protect-main.md).
 
 </details>

@@ -76,7 +76,7 @@ inputs. Upgrading later is just bumping `@v1` → `@v2`.
 
 ### 4. Copy one command file
 
-Copy `.claude/commands/sfx/apply.md` into your repo. Then `/sfx:apply [<name>]` is
+Copy `.claude/commands/sfx/apply.md` into your repo. Then `/sfx:apply <name>` is
 how you **trigger an apply** — it crafts the trigger commit and pushes it.
 
 > Distinct from `/opsx:apply`, which implements a change's tasks **locally**.

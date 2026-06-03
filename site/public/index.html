@@ -1,74 +1,153 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Specfly — push a proposal, get a reviewable PR</title>
-  <meta name="description" content="Specfly is Spec-Driven Development tooling. Push a change proposal, get a reviewable pull request with its implementation — running safely on your own GitHub Actions runner.">
-  <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-  <main>
-    <header class="hero">
-      <h1>Specfly</h1>
-      <p class="pitch">Push a change <em>proposal</em>, get a reviewable pull request with its implementation.</p>
-      <p class="sub">Spec-Driven Development tooling, built on <a href="https://github.com/Fission-AI/OpenSpec">OpenSpec</a> — coding with LLMs that stays efficient, sustainable, and secure.</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Specfly: Spec-Driven Development tooling</title>
+    <meta
+      name="description"
+      content="Specfly is Spec-Driven Development tooling. Push a change proposal, get a reviewable pull request with its implementation — running safely on your own GitHub Actions runner."
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <h1>Specfly</h1>
+        <p class="pitch">
+          Push a <em>change proposal</em>, get a pull request.
+        </p>
+        <p class="sub">
+          Spec-Driven Development tooling built on
+          <a href="https://github.com/Fission-AI/OpenSpec">OpenSpec</a>.
+        </p>
+        <p class="sub">
+          Coding with LLMs that stays efficient, sustainable, and secure.
+        </p>
 
-      <div class="install">
-        <p class="install-label">From inside a clone of your GitHub repo:</p>
-        <div class="install-block">
-          <code id="install-cmd">curl -fsSL https://specfly.dev/install.sh | bash</code>
-          <button id="copy-btn" type="button" aria-label="Copy install command">Copy</button>
+        <div class="install">
+          <p class="install-label">From inside a clone of your GitHub repo:</p>
+          <div class="install-block">
+            <code id="install-cmd"
+              >curl -fsSL https://specfly.dev/install.sh | bash</code
+            >
+            <button
+              id="copy-btn"
+              type="button"
+              aria-label="Copy install command"
+            >
+              Copy
+            </button>
+          </div>
         </div>
-      </div>
 
-      <nav class="cta">
-        <a class="btn primary" href="https://github.com/foster-systems/specfly">GitHub repository</a>
-        <a class="btn" href="https://github.com/foster-systems/specfly/tree/main/docs">Documentation</a>
-      </nav>
-    </header>
+        <nav class="cta">
+          <a
+            class="btn primary"
+            href="https://github.com/foster-systems/specfly"
+            >GitHub</a
+          >
+          <a
+            class="btn"
+            href="https://github.com/foster-systems/specfly/tree/main/docs"
+            >Docs</a
+          >
+        </nav>
+      </header>
 
-    <section class="why">
-      <h2>Why Specfly</h2>
-      <ul>
-        <li><span class="ico">🛡️</span><div><strong>Safe unattended runs.</strong> <span class="detail">The agent runs in an ephemeral, isolated GitHub Actions environment.</span></div></li>
-        <li><span class="ico">💸</span><div><strong>Cost control.</strong> <span class="detail">Bring your own Anthropic key and run on your GitHub runner.</span></div></li>
-        <li><span class="ico">🧩</span><div><strong>Open and composable.</strong> <span class="detail">Supports any tech stack and drops into bigger workflows cleanly.</span></div></li>
-        <li><span class="ico">🥇</span><div><strong>Best practices.</strong> <span class="detail">Stay efficient in the long run with the spec-driven advantage.</span></div></li>
-      </ul>
-    </section>
+      <section class="why">
+        <h2>Why Specfly</h2>
+        <ul>
+          <li>
+            <span class="ico">🔑</span>
+            <div>
+              <strong>You own it.</strong>
+              <span class="detail"
+                >Your key, your runner, your repo — you control the cost, the
+                data, and the flow.</span
+              >
+            </div>
+          </li>
+          <li>
+            <span class="ico">🛡️</span>
+            <div>
+              <strong>Safe unattended runs.</strong>
+              <span class="detail"
+                >The agent runs in an ephemeral, isolated GitHub Actions
+                environment.</span
+              >
+            </div>
+          </li>
+          <li>
+            <span class="ico">🧩</span>
+            <div>
+              <strong>Free and open.</strong>
+              <span class="detail"
+                >Supports any tech stack and drops into bigger workflows
+                cleanly.</span
+              >
+            </div>
+          </li>
+          <li>
+            <span class="ico">🥇</span>
+            <div>
+              <strong>Best practices.</strong>
+              <span class="detail"
+                >Stay efficient in the long run with the spec-driven
+                advantage.</span
+              >
+            </div>
+          </li>
+        </ul>
+      </section>
 
-    <section class="how">
-      <h2>How it works</h2>
-      <ol>
-        <li>Create a change proposal with the <code>/opsx:propose</code> Claude Code command — it produces spec files for you.</li>
-        <li>Review the proposal files locally and prompt any changes you need.</li>
-        <li>Trigger the implementation with <code>/sfx:apply [&lt;change-name&gt;]</code> — it runs on your GitHub Actions worker.</li>
-        <li>Review &amp; test the implementation PR; prompt changes and <em>apply</em> again as needed.</li>
-        <li>Archive the change with <code>/opsx:archive</code>, then approve and merge the PR.</li>
-        <li>Repeat.</li>
-      </ol>
-    </section>
-  </main>
+      <section class="how">
+        <h2>How it works</h2>
+        <ol>
+          <li>
+            Create a change proposal with the <code>/opsx:propose</code> Claude
+            Code command.
+          </li>
+          <li>Review the proposal locally and prompt any changes you need.</li>
+          <li>
+            Trigger the implementation with
+            <code>/sfx:apply &lt;change-name&gt;</code>.
+          </li>
+          <li>
+            Review &amp; test the implementation PR; prompt changes and
+            <em>apply</em> again as needed.
+          </li>
+          <li>
+            Archive the change with <code>/opsx:archive</code>, then approve and
+            merge the PR.
+          </li>
+          <li>Repeat.</li>
+        </ol>
+      </section>
+    </main>
 
-  <footer>
-    <a href="https://github.com/foster-systems/specfly">github.com/foster-systems/specfly</a>
-    <span>·</span>
-    <span>MIT © Foster Systems</span>
-  </footer>
+    <footer>
+      <a href="https://github.com/foster-systems/specfly"
+        >github.com/foster-systems/specfly</a
+      >
+      <span>·</span>
+      <span>MIT © Foster Systems</span>
+    </footer>
 
-  <script>
-    // Progressive enhancement only — the command is fully copy-pasteable without JS.
-    var btn = document.getElementById('copy-btn');
-    var cmd = document.getElementById('install-cmd');
-    if (btn && cmd && navigator.clipboard) {
-      btn.addEventListener('click', function () {
-        navigator.clipboard.writeText(cmd.textContent).then(function () {
-          btn.textContent = 'Copied';
-          setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+    <script>
+      // Progressive enhancement only — the command is fully copy-pasteable without JS.
+      var btn = document.getElementById("copy-btn");
+      var cmd = document.getElementById("install-cmd");
+      if (btn && cmd && navigator.clipboard) {
+        btn.addEventListener("click", function () {
+          navigator.clipboard.writeText(cmd.textContent).then(function () {
+            btn.textContent = "Copied";
+            setTimeout(function () {
+              btn.textContent = "Copy";
+            }, 1500);
+          });
         });
-      });
-    }
-  </script>
-</body>
+      }
+    </script>
+  </body>
 </html>
