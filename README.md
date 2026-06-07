@@ -16,7 +16,7 @@ Specfly is a [Spec-Driven Development](https://specdriven.com/) tooling. It buil
 - **🔑 You own it.** Your key, your runner, your repo — you control the cost, the data, and the flow.
 - **🛡️ Safe unattended runs.** The agent runs in an ephemeral, isolated GitHub Actions environment. 
 - **🧩 Free and open.** Supports **any** popular tech stack and drops into bigger workflows cleanly.
-- **🥇Best practices.** Stay efficient in the long run with spec-driven advantage.
+- **🥇 Best practices.** Stay efficient in the long run with spec-driven advantage.
 
 ## How it works
 
