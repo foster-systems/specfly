@@ -9,6 +9,6 @@
     "dev": "npm run predeploy && wrangler dev"
   },
   "devDependencies": {
-    "wrangler": "^4.97.0"
+    "wrangler": "^4.123.0"
   }
 }
