@@ -9,6 +9,9 @@
 
 </div>
 
+> [!IMPORTANT]
+> **Specfly is no longer maintained.** It is superseded by [paddock](https://github.com/premeq/paddock).
+
 Specfly is a [Spec-Driven Development](https://specdriven.com/) tooling. It builds on awesome [OpenSpec](https://github.com/Fission-AI/OpenSpec) to make coding with LLMs efficient and secure.
 
 ## Why Specfly
